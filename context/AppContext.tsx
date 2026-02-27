@@ -1,0 +1,690 @@
+
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { 
+  InventoryItem, Transaction, User, Warehouse, Supplier, 
+  Role, TransactionStatus, TransactionType, MaterialRequest, 
+  RequestStatus, AuditLog, GlobalActivity, ActivityType,
+  ItemCategory, ItemUnit
+} from '../types';
+import { 
+  MOCK_USERS, MOCK_WAREHOUSES, MOCK_ITEMS, 
+  MOCK_SUPPLIERS, MOCK_TRANSACTIONS 
+} from '../constants';
+
+interface AppSettings {
+  name: string;
+  logo: string;
+}
+
+interface AppContextType {
+  user: User;
+  users: User[];
+  appSettings: AppSettings;
+  setUser: (user: User) => void;
+  switchUser: (user: User) => void;
+  addUser: (user: User) => void;
+  updateUser: (user: User) => void;
+  removeUser: (userId: string) => void;
+  items: InventoryItem[];
+  warehouses: Warehouse[];
+  suppliers: Supplier[];
+  transactions: Transaction[];
+  requests: MaterialRequest[];
+  activities: GlobalActivity[];
+  categories: ItemCategory[];
+  units: ItemUnit[];
+  addItem: (item: InventoryItem) => void;
+  addItems: (items: InventoryItem[]) => void;
+  updateItem: (item: InventoryItem) => void;
+  removeItem: (itemId: string) => void;
+  addTransaction: (transaction: Transaction) => void;
+  updateTransactionStatus: (id: string, status: TransactionStatus, approverId?: string) => void;
+  clearTransactionHistory: () => void;
+  addWarehouse: (warehouse: Warehouse) => void;
+  updateWarehouse: (warehouse: Warehouse) => void;
+  removeWarehouse: (warehouseId: string) => void;
+  addRequest: (request: MaterialRequest) => void;
+  updateRequestStatus: (id: string, status: RequestStatus, note?: string, approvedItems?: {itemId: string, qty: number}[], sourceWarehouseId?: string) => void;
+  logActivity: (type: ActivityType, action: string, description: string, status?: GlobalActivity['status'], warehouseId?: string) => void;
+  addCategory: (name: string) => void;
+  updateCategory: (category: ItemCategory) => void;
+  removeCategory: (id: string) => void;
+  addUnit: (name: string) => void;
+  updateUnit: (unit: ItemUnit) => void;
+  removeUnit: (id: string) => void;
+  addSupplier: (supplier: Supplier) => void;
+  updateSupplier: (supplier: Supplier) => void;
+  removeSupplier: (id: string) => void;
+  updateAppSettings: (settings: AppSettings) => void;
+  approvePartialTransaction: (id: string, selectedItemIds: string[], approverId: string) => void;
+  clearAllData: () => void;
+  isLoading: boolean;
+  isRefreshing: boolean;
+  connectionError: string | null;
+}
+
+const AppContext = createContext<AppContextType | undefined>(undefined);
+
+export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [user, setUser] = useState<User>(MOCK_USERS[0]);
+  const [users, setUsers] = useState<User[]>(isSupabaseConfigured ? [] : MOCK_USERS);
+  const [appSettings, setAppSettings] = useState<AppSettings>({ name: 'KhoViet', logo: '' });
+  const [items, setItems] = useState<InventoryItem[]>(isSupabaseConfigured ? [] : MOCK_ITEMS);
+  const [warehouses, setWarehouses] = useState<Warehouse[]>(MOCK_WAREHOUSES);
+  const [suppliers, setSuppliers] = useState<Supplier[]>(isSupabaseConfigured ? [] : MOCK_SUPPLIERS);
+  const [transactions, setTransactions] = useState<Transaction[]>(isSupabaseConfigured ? [] : MOCK_TRANSACTIONS);
+  const [requests, setRequests] = useState<MaterialRequest[]>([]);
+  const [activities, setActivities] = useState<GlobalActivity[]>([]);
+  const [categories, setCategories] = useState<ItemCategory[]>([
+    { id: 'cat1', name: 'Vật liệu xây dựng' },
+    { id: 'cat2', name: 'Công cụ dụng cụ' },
+    { id: 'cat3', name: 'Bảo hộ lao động' }
+  ]);
+  const [units, setUnits] = useState<ItemUnit[]>([
+    { id: 'u1', name: 'kg' },
+    { id: 'u2', name: 'Bao (50kg)' },
+    { id: 'u3', name: 'Cái' },
+    { id: 'u4', name: 'Mét' }
+  ]);
+  
+  const [isLoading, setIsLoading] = useState(isSupabaseConfigured);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
+
+  // Load data from Supabase on mount
+  useEffect(() => {
+    if (!isSupabaseConfigured) {
+      setIsLoading(false);
+      return;
+    }
+
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        
+        // Fetch each table individually to handle missing tables gracefully
+        const fetchTable = async (table: string, query: any = supabase.from(table).select('*')) => {
+          try {
+            const { data, error } = await query;
+            if (error) {
+              console.warn(`Error fetching ${table}:`, error.message);
+              return null;
+            }
+            return data;
+          } catch (e) {
+            console.warn(`Exception fetching ${table}:`, e);
+            return null;
+          }
+        };
+
+        const [
+          itemsData,
+          whData,
+          supData,
+          txData,
+          reqData,
+          actData,
+          catData,
+          unitData,
+          settingsData,
+          usersData
+        ] = await Promise.all([
+          fetchTable('items'),
+          fetchTable('warehouses'),
+          fetchTable('suppliers'),
+          fetchTable('transactions', supabase.from('transactions').select('*').order('date', { ascending: false })),
+          fetchTable('requests', supabase.from('requests').select('*').order('createdDate', { ascending: false })),
+          fetchTable('activities', supabase.from('activities').select('*').order('timestamp', { ascending: false }).limit(50)),
+          fetchTable('categories'),
+          fetchTable('units'),
+          fetchTable('app_settings', supabase.from('app_settings').select('*').maybeSingle()),
+          fetchTable('users')
+        ]);
+
+        if (usersData && usersData.length > 0) {
+          const mappedUsers = usersData.map((u: any) => ({
+            ...u,
+            assignedWarehouseId: u.assigned_warehouse_id
+          }));
+          setUsers(mappedUsers);
+          // Update current user if found in the list
+          const currentInList = mappedUsers.find((u: any) => u.email === user.email);
+          if (currentInList) setUser(currentInList);
+        }
+
+        if (itemsData) setItems(itemsData.map((i: any) => ({
+          ...i,
+          priceIn: i.price_in,
+          priceOut: i.price_out,
+          minStock: i.min_stock,
+          supplierId: i.supplier_id,
+          imageUrl: i.image_url,
+          stockByWarehouse: i.stock_by_warehouse
+        })));
+        
+        if (whData && whData.length > 0) setWarehouses(whData.map((w: any) => ({
+          ...w,
+          isArchived: w.is_archived
+        })));
+        
+        if (supData) setSuppliers(supData.map((s: any) => ({
+          ...s,
+          contactPerson: s.contact_person
+        })));
+        
+        if (txData) setTransactions(txData.map((t: any) => ({
+          ...t,
+          sourceWarehouseId: t.source_warehouse_id,
+          targetWarehouseId: t.target_warehouse_id,
+          supplierId: t.supplier_id,
+          requesterId: t.requester_id,
+          approverId: t.approver_id,
+          relatedRequestId: t.related_request_id,
+          pendingItems: t.pending_items
+        })));
+        
+        if (reqData) setRequests(reqData.map((r: any) => ({
+          ...r,
+          siteWarehouseId: r.site_warehouse_id,
+          sourceWarehouseId: r.source_warehouse_id,
+          requesterId: r.requester_id,
+          createdDate: r.created_date,
+          expectedDate: r.expected_date
+        })));
+        
+        if (actData) setActivities(actData.map((a: any) => ({
+          ...a,
+          userId: a.user_id,
+          userName: a.user_name,
+          userAvatar: a.user_avatar,
+          warehouseId: a.warehouse_id
+        })));
+        
+        if (catData && catData.length > 0) setCategories(catData);
+        if (unitData && unitData.length > 0) setUnits(unitData);
+        if (settingsData) setAppSettings(settingsData);
+
+      } catch (error: any) {
+        console.error('Error fetching data from Supabase:', error);
+        setConnectionError(error.message);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  // Helper to sync a single table to Supabase
+  const syncToSupabase = async (table: string, data: any) => {
+    try {
+      // Map frontend camelCase to backend snake_case if needed
+      // For simplicity in this demo, we'll try to keep them close or map them
+      let payload = data;
+      
+      if (table === 'items') {
+        payload = {
+          id: data.id,
+          sku: data.sku,
+          name: data.name,
+          category: data.category,
+          unit: data.unit,
+          price_in: data.priceIn,
+          price_out: data.priceOut,
+          min_stock: data.minStock,
+          supplier_id: data.supplierId,
+          image_url: data.imageUrl,
+          stock_by_warehouse: data.stockByWarehouse
+        };
+      } else if (table === 'transactions') {
+        payload = {
+          id: data.id,
+          type: data.type,
+          date: data.date,
+          items: data.items,
+          source_warehouse_id: data.sourceWarehouseId,
+          target_warehouse_id: data.targetWarehouseId,
+          supplier_id: data.supplierId,
+          requester_id: data.requesterId,
+          approver_id: data.approverId,
+          status: data.status,
+          note: data.note,
+          related_request_id: data.relatedRequestId,
+          pending_items: data.pendingItems
+        };
+      } else if (table === 'warehouses') {
+        payload = {
+          id: data.id,
+          name: data.name,
+          address: data.address,
+          type: data.type,
+          is_archived: data.isArchived
+        };
+      } else if (table === 'suppliers') {
+        payload = {
+          id: data.id,
+          name: data.name,
+          contact_person: data.contactPerson,
+          phone: data.phone,
+          debt: data.debt
+        };
+      } else if (table === 'requests') {
+        payload = {
+          id: data.id,
+          code: data.code,
+          site_warehouse_id: data.siteWarehouseId,
+          source_warehouse_id: data.sourceWarehouseId,
+          requester_id: data.requesterId,
+          status: data.status,
+          items: data.items,
+          created_date: data.createdDate,
+          expected_date: data.expectedDate,
+          note: data.note,
+          logs: data.logs
+        };
+      } else if (table === 'activities') {
+        payload = {
+          id: data.id,
+          user_id: data.userId,
+          user_name: data.userName,
+          user_avatar: data.userAvatar,
+          type: data.type,
+          action: data.action,
+          description: data.description,
+          timestamp: data.timestamp,
+          warehouse_id: data.warehouseId,
+          status: data.status
+        };
+      } else if (table === 'users') {
+        payload = {
+          id: data.id,
+          name: data.name,
+          email: data.email,
+          role: data.role,
+          avatar: data.avatar,
+          phone: data.phone,
+          assigned_warehouse_id: data.assignedWarehouseId
+        };
+      }
+
+      const { error } = await supabase.from(table).upsert(payload);
+      if (error) throw error;
+    } catch (error) {
+      console.error(`Error syncing ${table} to Supabase:`, error);
+    }
+  };
+
+  const logActivity = (type: ActivityType, action: string, description: string, status: GlobalActivity['status'] = 'INFO', warehouseId?: string) => {
+    const randomSuffix = Math.random().toString(36).substring(2, 7);
+    const newActivity: GlobalActivity = {
+      id: `act-${Date.now()}-${randomSuffix}`,
+      userId: user.id,
+      userName: user.name,
+      userAvatar: user.avatar,
+      type,
+      action,
+      description,
+      timestamp: new Date().toISOString(),
+      warehouseId,
+      status
+    };
+    setActivities(prev => [newActivity, ...prev].slice(0, 50));
+    syncToSupabase('activities', newActivity);
+  };
+
+  const switchUser = (newUser: User) => {
+    setIsRefreshing(true);
+    setTimeout(() => {
+      setUser(newUser);
+      setIsRefreshing(false);
+    }, 500);
+  };
+
+  const addUser = (u: User) => {
+    setUsers(prev => [...prev, u]);
+    syncToSupabase('users', u);
+    logActivity('SYSTEM', 'Thêm người dùng', `Đã thêm người dùng mới: ${u.name}`, 'SUCCESS');
+  };
+  
+  const updateUser = (u: User) => {
+    setUsers(prev => prev.map(item => item.id === u.id ? u : item));
+    if (user.id === u.id) setUser(u);
+    syncToSupabase('users', u);
+    logActivity('SYSTEM', 'Cập nhật người dùng', `Đã cập nhật thông tin người dùng: ${u.name}`, 'INFO');
+  };
+  
+  const removeUser = async (id: string) => {
+    const u = users.find(user => user.id === id);
+    setUsers(prev => prev.filter(u => u.id !== id));
+    try {
+      await supabase.from('users').delete().eq('id', id);
+      if (u) logActivity('SYSTEM', 'Xóa người dùng', `Đã xóa người dùng: ${u.name}`, 'DANGER');
+    } catch (error) {
+      console.error('Error deleting user from Supabase:', error);
+    }
+  };
+
+  const addItem = (item: InventoryItem) => {
+    setItems(prev => [...prev, item]);
+    syncToSupabase('items', item);
+    logActivity('INVENTORY', 'Thêm vật tư', `Vật tư "${item.name}" được tạo mới`, 'SUCCESS');
+  };
+  
+  const addItems = (newItems: InventoryItem[]) => {
+    setItems(prev => {
+      const existingSkus = new Set(prev.map(i => i.sku));
+      const filteredNew = newItems.filter(ni => !existingSkus.has(ni.sku));
+      
+      // Sync each new item to Supabase
+      filteredNew.forEach(item => syncToSupabase('items', item));
+      
+      return [...prev, ...filteredNew];
+    });
+  };
+  
+  const updateItem = (item: InventoryItem) => {
+    setItems(prev => prev.map(i => i.id === item.id ? item : i));
+    syncToSupabase('items', item);
+  };
+  
+  const removeItem = async (id: string) => {
+    setItems(prev => prev.filter(i => i.id !== id));
+    try {
+      await supabase.from('items').delete().eq('id', id);
+    } catch (error) {
+      console.error('Error deleting item from Supabase:', error);
+    }
+  };
+
+  const applyStockChange = (tx: Transaction) => {
+    setItems(prevItems => {
+      const updatedItems = prevItems.map(item => {
+        const txItem = tx.items.find(ti => ti.itemId === item.id);
+        if (!txItem) return item;
+
+        const newStock = { ...item.stockByWarehouse };
+        const qty = txItem.quantity;
+
+        if (tx.type === TransactionType.IMPORT && tx.targetWarehouseId) {
+          newStock[tx.targetWarehouseId] = (newStock[tx.targetWarehouseId] || 0) + qty;
+        } else if ((tx.type === TransactionType.EXPORT || tx.type === TransactionType.LIQUIDATION) && tx.sourceWarehouseId) {
+          newStock[tx.sourceWarehouseId] = Math.max(0, (newStock[tx.sourceWarehouseId] || 0) - qty);
+        } else if (tx.type === TransactionType.TRANSFER && tx.sourceWarehouseId && tx.targetWarehouseId) {
+          newStock[tx.sourceWarehouseId] = Math.max(0, (newStock[tx.sourceWarehouseId] || 0) - qty);
+          newStock[tx.targetWarehouseId] = (newStock[tx.targetWarehouseId] || 0) + qty;
+        } else if (tx.type === TransactionType.ADJUSTMENT && tx.targetWarehouseId) {
+          newStock[tx.targetWarehouseId] = (newStock[tx.targetWarehouseId] || 0) + qty;
+        }
+
+        const updatedItem = { ...item, stockByWarehouse: newStock };
+        syncToSupabase('items', updatedItem);
+        return updatedItem;
+      });
+      return updatedItems;
+    });
+  };
+
+  const addTransaction = (tx: Transaction) => {
+    setTransactions(prev => [tx, ...prev]);
+    syncToSupabase('transactions', tx);
+    const whId = tx.targetWarehouseId || tx.sourceWarehouseId;
+    
+    // If transaction is created as COMPLETED or APPROVED (e.g. by Admin), 
+    // we need to make sure any new items are added to the system
+    if (tx.status === TransactionStatus.COMPLETED || tx.status === TransactionStatus.APPROVED) {
+      if (tx.pendingItems && tx.pendingItems.length > 0) {
+        addItems(tx.pendingItems);
+      }
+    }
+
+    logActivity('TRANSACTION', `Tạo phiếu ${tx.type}`, `Phiếu mã ${tx.id.slice(-6)} đã được tạo`, 'INFO', whId);
+    if (tx.status === TransactionStatus.COMPLETED) applyStockChange(tx);
+  };
+
+  const updateTransactionStatus = (id: string, status: TransactionStatus, approverId?: string) => {
+    setTransactions(prev => prev.map(tx => {
+      if (tx.id === id) {
+        const updatedTx = { ...tx, status, approverId: approverId || user.id };
+        syncToSupabase('transactions', updatedTx);
+        const whId = tx.targetWarehouseId || tx.sourceWarehouseId;
+        
+        if (status === TransactionStatus.COMPLETED || status === TransactionStatus.APPROVED) {
+          if (tx.pendingItems && tx.pendingItems.length > 0) {
+            addItems(tx.pendingItems);
+          }
+        }
+
+        logActivity('TRANSACTION', `Cập nhật phiếu`, `Phiếu mã ${tx.id.slice(-6)} chuyển sang ${status}`, status === TransactionStatus.COMPLETED ? 'SUCCESS' : 'INFO', whId);
+        if (status === TransactionStatus.COMPLETED) applyStockChange(updatedTx);
+        return updatedTx;
+      }
+      return tx;
+    }));
+  };
+
+  const approvePartialTransaction = (id: string, selectedItemIds: string[], approverId: string) => {
+    setTransactions(prev => prev.map(tx => {
+      if (tx.id === id) {
+        const filteredItems = tx.items.filter(ti => selectedItemIds.includes(ti.itemId));
+        const isNeedReceipt = tx.type === TransactionType.IMPORT || tx.type === TransactionType.TRANSFER;
+        const nextStatus = isNeedReceipt ? TransactionStatus.APPROVED : TransactionStatus.COMPLETED;
+        
+        if (tx.pendingItems && tx.pendingItems.length > 0) {
+          const selectedPendingItems = tx.pendingItems.filter(ni => selectedItemIds.includes(ni.id));
+          if (selectedPendingItems.length > 0) {
+            addItems(selectedPendingItems);
+          }
+        }
+
+        const updatedTx = { 
+          ...tx, 
+          items: filteredItems,
+          status: nextStatus,
+          approverId: approverId,
+          note: selectedItemIds.length < tx.items.length 
+            ? `${tx.note} (Đã lọc bớt ${tx.items.length - selectedItemIds.length} món)` 
+            : tx.note,
+          pendingItems: []
+        };
+        syncToSupabase('transactions', updatedTx);
+
+        const whId = tx.targetWarehouseId || tx.sourceWarehouseId;
+        logActivity('TRANSACTION', `Phê duyệt phiếu`, `Phiếu mã ${tx.id.slice(-6)} đã được phê duyệt một phần (${selectedItemIds.length}/${tx.items.length} món)`, 'SUCCESS', whId);
+        
+        if (nextStatus === TransactionStatus.COMPLETED) applyStockChange(updatedTx);
+        return updatedTx;
+      }
+      return tx;
+    }));
+  };
+
+  const clearTransactionHistory = async () => {
+    setTransactions([]);
+    try {
+      await supabase.from('transactions').delete().neq('id', '0');
+    } catch (error) {
+      console.error('Error clearing transactions from Supabase:', error);
+    }
+  };
+
+  const clearAllData = async () => {
+    setItems([]);
+    setTransactions([]);
+    setActivities([]);
+    setRequests([]);
+    
+    try {
+      await Promise.all([
+        supabase.from('items').delete().neq('id', '0'),
+        supabase.from('transactions').delete().neq('id', '0'),
+        supabase.from('activities').delete().neq('id', '0'),
+        supabase.from('requests').delete().neq('id', '0')
+      ]);
+    } catch (error) {
+      console.error('Error clearing all data from Supabase:', error);
+    }
+    
+    localStorage.removeItem('khoviet_items');
+    localStorage.removeItem('khoviet_transactions');
+    localStorage.removeItem('khoviet_activities');
+    localStorage.removeItem('khoviet_requests');
+    logActivity('SYSTEM', 'Xóa dữ liệu', 'Toàn bộ dữ liệu vật tư và giao dịch đã được xóa sạch', 'DANGER');
+  };
+
+  const addWarehouse = (w: Warehouse) => {
+    setWarehouses(prev => [...prev, w]);
+    syncToSupabase('warehouses', w);
+    logActivity('SYSTEM', 'Thêm kho bãi', `Đã thêm kho mới: ${w.name}`, 'SUCCESS');
+  };
+
+  const updateWarehouse = (w: Warehouse) => {
+    setWarehouses(prev => prev.map(item => item.id === w.id ? w : item));
+    syncToSupabase('warehouses', w);
+    logActivity('SYSTEM', 'Cập nhật kho bãi', `Đã cập nhật thông tin kho: ${w.name}`, 'INFO');
+  };
+
+  const removeWarehouse = async (id: string) => {
+    const warehouse = warehouses.find(w => w.id === id);
+    if (!warehouse) return;
+
+    const hasStock = items.some(item => (item.stockByWarehouse[id] || 0) > 0);
+
+    if (hasStock) {
+      const updatedWh = { ...warehouse, isArchived: true };
+      setWarehouses(prev => prev.map(w => w.id === id ? updatedWh : w));
+      syncToSupabase('warehouses', updatedWh);
+      logActivity('SYSTEM', 'Lưu trữ kho bãi', `Kho ${warehouse.name} vẫn còn tồn kho nên đã được chuyển vào trạng thái Lưu trữ.`, 'WARNING');
+    } else {
+      setWarehouses(prev => prev.filter(w => w.id !== id));
+      try {
+        await supabase.from('warehouses').delete().eq('id', id);
+      } catch (error) {
+        console.error('Error deleting warehouse from Supabase:', error);
+      }
+      logActivity('SYSTEM', 'Xóa kho bãi', `Đã xóa hoàn toàn kho: ${warehouse.name}`, 'DANGER');
+    }
+  };
+
+  const addRequest = (r: MaterialRequest) => {
+    setRequests(prev => [r, ...prev]);
+    syncToSupabase('requests', r);
+    logActivity('REQUEST', 'Yêu cầu vật tư', `Phiếu yêu cầu ${r.code} đã được gửi`, 'INFO', r.siteWarehouseId);
+  };
+
+  const updateRequestStatus = (id: string, status: RequestStatus, note?: string, approvedItems?: {itemId: string, qty: number}[], sourceWarehouseId?: string) => {
+    setRequests(prev => prev.map(req => {
+      if (req.id === id) {
+        const newLog: AuditLog = {
+          action: status,
+          userId: user.id,
+          timestamp: new Date().toISOString(),
+          note: note
+        };
+
+        let updatedItems = [...req.items];
+        if (status === RequestStatus.APPROVED && approvedItems) {
+          updatedItems = req.items.map(item => {
+            const approved = approvedItems.find(i => i.itemId === item.itemId);
+            return approved ? { ...item, approvedQty: approved.qty } : item;
+          });
+        }
+
+        const updatedReq = {
+          ...req,
+          status,
+          sourceWarehouseId: sourceWarehouseId || req.sourceWarehouseId,
+          items: updatedItems,
+          logs: [...req.logs, newLog]
+        };
+        syncToSupabase('requests', updatedReq);
+
+        logActivity('REQUEST', 'Cập nhật yêu cầu', `Yêu cầu ${req.code} chuyển sang ${status}`, 'INFO', req.siteWarehouseId);
+
+        return updatedReq;
+      }
+      return req;
+    }));
+  };
+
+  const addCategory = (name: string) => {
+    const newCat = { id: `cat-${Date.now()}-${Math.random().toString(36).substring(2, 5)}`, name };
+    setCategories(prev => [...prev, newCat]);
+    syncToSupabase('categories', newCat);
+  };
+  
+  const updateCategory = (c: ItemCategory) => {
+    setCategories(prev => prev.map(item => item.id === c.id ? c : item));
+    syncToSupabase('categories', c);
+  };
+  
+  const removeCategory = async (id: string) => {
+    setCategories(prev => prev.filter(c => c.id !== id));
+    try {
+      await supabase.from('categories').delete().eq('id', id);
+    } catch (error) {
+      console.error('Error deleting category from Supabase:', error);
+    }
+  };
+
+  const addUnit = (name: string) => {
+    const newUnit = { id: `unit-${Date.now()}-${Math.random().toString(36).substring(2, 5)}`, name };
+    setUnits(prev => [...prev, newUnit]);
+    syncToSupabase('units', newUnit);
+  };
+  
+  const updateUnit = (u: ItemUnit) => {
+    setUnits(prev => prev.map(item => item.id === u.id ? u : item));
+    syncToSupabase('units', u);
+  };
+  
+  const removeUnit = async (id: string) => {
+    setUnits(prev => prev.filter(u => u.id !== id));
+    try {
+      await supabase.from('units').delete().eq('id', id);
+    } catch (error) {
+      console.error('Error deleting unit from Supabase:', error);
+    }
+  };
+
+  const addSupplier = (s: Supplier) => {
+    setSuppliers(prev => [...prev, s]);
+    syncToSupabase('suppliers', s);
+  };
+  
+  const updateSupplier = (s: Supplier) => {
+    setSuppliers(prev => prev.map(item => item.id === s.id ? s : item));
+    syncToSupabase('suppliers', s);
+  };
+  
+  const removeSupplier = async (id: string) => {
+    setSuppliers(prev => prev.filter(s => s.id !== id));
+    try {
+      await supabase.from('suppliers').delete().eq('id', id);
+    } catch (error) {
+      console.error('Error deleting supplier from Supabase:', error);
+    }
+  };
+
+  const updateAppSettings = (s: AppSettings) => {
+    setAppSettings(s);
+    syncToSupabase('app_settings', s);
+  };
+
+  return (
+    <AppContext.Provider value={{
+      user, users, appSettings, setUser, switchUser, addUser, updateUser, removeUser, items, warehouses, suppliers, transactions, requests, activities,
+      categories, units, addItem, addItems, updateItem, removeItem, addTransaction, updateTransactionStatus, clearTransactionHistory, addWarehouse, updateWarehouse, removeWarehouse,
+      addRequest, updateRequestStatus, logActivity, addCategory, updateCategory, removeCategory, addUnit, updateUnit, removeUnit, 
+      addSupplier, updateSupplier, removeSupplier, updateAppSettings, approvePartialTransaction, clearAllData, isLoading, isRefreshing, connectionError
+    }}>
+      {children}
+    </AppContext.Provider>
+  );
+};
+
+export const useApp = () => {
+  const context = useContext(AppContext);
+  if (!context) throw new Error("useApp must be used within AppProvider");
+  return context;
+};
