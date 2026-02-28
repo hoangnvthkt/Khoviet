@@ -1,5 +1,6 @@
 
 import React, { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
@@ -14,27 +15,38 @@ import { Role, TransactionStatus, TransactionType } from '../types';
 
 const COLORS = ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
 
-const StatCard: React.FC<{ title: string; value: string; icon: React.ElementType; color: string; trend?: string }> = ({ title, value, icon: Icon, color, trend }) => (
-  <div className="bg-white p-5 md:p-6 rounded-2xl shadow-sm border border-slate-100 flex items-start justify-between hover:shadow-md transition-shadow">
+const StatCard: React.FC<{ 
+  title: string; 
+  value: string; 
+  icon: React.ElementType; 
+  color: string; 
+  trend?: string;
+  onClick?: () => void;
+}> = ({ title, value, icon: Icon, color, trend, onClick }) => (
+  <div 
+    onClick={onClick}
+    className={`bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-slate-100 flex items-start justify-between hover:shadow-md transition-all ${onClick ? 'cursor-pointer active:scale-95' : ''}`}
+  >
     <div className="min-w-0">
-      <p className="text-slate-500 text-[11px] uppercase font-black tracking-widest mb-1 truncate">{title}</p>
-      <h3 className="text-xl md:text-2xl font-black text-slate-800 truncate">{value}</h3>
+      <p className="text-slate-500 text-[10px] md:text-[11px] uppercase font-black tracking-widest mb-1 truncate">{title}</p>
+      <h3 className="text-lg md:text-2xl font-black text-slate-800 truncate">{value}</h3>
       {trend && (
-        <div className="flex items-center mt-2">
-          <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${trend.startsWith('+') ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
+        <div className="flex items-center mt-1 md:mt-2">
+          <span className={`text-[9px] md:text-[10px] px-1.5 py-0.5 rounded-full font-bold ${trend.startsWith('+') ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
             {trend}
           </span>
-          <span className="text-[10px] text-slate-400 ml-1 font-medium">so với kỳ trước</span>
+          <span className="text-[9px] md:text-[10px] text-slate-400 ml-1 font-medium hidden xs:inline">so với kỳ trước</span>
         </div>
       )}
     </div>
-    <div className={`p-2.5 md:p-3 rounded-xl ${color} bg-opacity-10 shrink-0 border border-current border-opacity-10`}>
-      <Icon className={`w-5 h-5 md:w-6 md:h-6 ${color.replace('bg-', 'text-')}`} />
+    <div className={`p-2 md:p-3 rounded-xl ${color} bg-opacity-10 shrink-0 border border-current border-opacity-10`}>
+      <Icon className={`w-4 h-4 md:w-6 md:h-6 ${color.replace('bg-', 'text-')}`} />
     </div>
   </div>
 );
 
 const Dashboard: React.FC = () => {
+  const navigate = useNavigate();
   const { items, transactions, activities, isLoading, warehouses, user } = useApp();
   const [chartType, setChartType] = useState<'bar' | 'line' | 'pie'>('bar');
   const [selectedWhId, setSelectedWhId] = useState<string>(user.assignedWarehouseId || 'all');
@@ -190,11 +202,36 @@ const Dashboard: React.FC = () => {
         )}
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title="Giá trị kho" value={`${(stats.totalValue / 1000000).toLocaleString()} Tr`} icon={TrendingUp} color="bg-blue-600" trend="+5.2%" />
-        <StatCard title="Tổng tồn kho" value={stats.totalStock.toLocaleString()} icon={Package} color="bg-emerald-600" />
-        <StatCard title="Cảnh báo tồn" value={stats.lowStock.toString()} icon={AlertTriangle} color="bg-red-500" />
-        <StatCard title="Chờ phê duyệt" value={stats.pendingTx.toString()} icon={Clock} color="bg-orange-500" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+        <StatCard 
+          title="Giá trị kho" 
+          value={`${(stats.totalValue / 1000000).toLocaleString()} Tr`} 
+          icon={TrendingUp} 
+          color="bg-blue-600" 
+          trend="+5.2%" 
+          onClick={() => navigate('/inventory')}
+        />
+        <StatCard 
+          title="Tổng tồn kho" 
+          value={stats.totalStock.toLocaleString()} 
+          icon={Package} 
+          color="bg-emerald-600" 
+          onClick={() => navigate('/inventory')}
+        />
+        <StatCard 
+          title="Cảnh báo tồn" 
+          value={stats.lowStock.toString()} 
+          icon={AlertTriangle} 
+          color="bg-red-500" 
+          onClick={() => navigate('/inventory', { state: { filter: 'low' } })}
+        />
+        <StatCard 
+          title="Chờ phê duyệt" 
+          value={stats.pendingTx.toString()} 
+          icon={Clock} 
+          color="bg-orange-500" 
+          onClick={() => navigate('/operations', { state: { tab: 'PENDING' } })}
+        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

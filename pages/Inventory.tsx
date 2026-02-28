@@ -1,7 +1,8 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
-import { Search, Filter, Plus, QrCode, Upload, FileSpreadsheet, Trash2, MoreHorizontal, ShieldAlert } from 'lucide-react';
+import { Search, Filter, Plus, QrCode, Upload, FileSpreadsheet, Trash2, MoreHorizontal, ShieldAlert, AlertTriangle } from 'lucide-react';
 import ScannerModal from '../components/ScannerModal';
 import AddInventoryModal from '../components/AddInventoryModal';
 import InventoryDetailModal from '../components/InventoryDetailModal';
@@ -10,6 +11,7 @@ import * as XLSX from 'xlsx';
 import { InventoryItem, Role, Transaction, TransactionType, TransactionStatus } from '../types';
 
 const Inventory: React.FC = () => {
+  const location = useLocation();
   const { items, warehouses, addItems, addItem, removeItem, addTransaction, user, transactions, categories, units } = useApp();
   const [searchTerm, setSearchTerm] = useState('');
   
@@ -18,12 +20,18 @@ const Inventory: React.FC = () => {
   
   // Khởi tạo filter kho
   const [filterWarehouse, setFilterWarehouse] = useState('all');
+  const [showLowStockOnly, setShowLowStockOnly] = useState(false);
 
   useEffect(() => {
     if (isKeeper && user.assignedWarehouseId) {
         setFilterWarehouse(user.assignedWarehouseId);
     }
-  }, [isKeeper, user]);
+    
+    // Handle filter from dashboard
+    if (location.state?.filter === 'low') {
+      setShowLowStockOnly(true);
+    }
+  }, [isKeeper, user, location.state]);
 
   const [isScannerOpen, setScannerOpen] = useState(false);
   const [isAddModalOpen, setAddModalOpen] = useState(false);
@@ -36,20 +44,28 @@ const Inventory: React.FC = () => {
       const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
                             item.sku.toLowerCase().includes(searchTerm.toLowerCase());
       
+      let matchesFilter = true;
+      
       // Nếu là thủ kho, chỉ thấy vật tư có trong kho mình
       if (isKeeper && user.assignedWarehouseId) {
           const hasStock = (item.stockByWarehouse[user.assignedWarehouseId] || 0) > 0;
-          return matchesSearch && hasStock;
-      }
-      
-      // Nếu là Admin nhưng đang chọn lọc 1 kho cụ thể
-      if (filterWarehouse !== 'all') {
-          return matchesSearch && (item.stockByWarehouse[filterWarehouse] || 0) > 0;
+          matchesFilter = hasStock;
+      } else if (filterWarehouse !== 'all') {
+          // Nếu là Admin nhưng đang chọn lọc 1 kho cụ thể
+          matchesFilter = (item.stockByWarehouse[filterWarehouse] || 0) > 0;
       }
 
-      return matchesSearch;
+      // Lọc cảnh báo tồn
+      if (showLowStockOnly) {
+        const stock = filterWarehouse === 'all' 
+          ? Object.values(item.stockByWarehouse).reduce((a, b) => (a as number) + (b as number), 0)
+          : (item.stockByWarehouse[filterWarehouse] || 0);
+        matchesFilter = matchesFilter && stock <= item.minStock;
+      }
+      
+      return matchesSearch && matchesFilter;
     });
-  }, [items, searchTerm, isKeeper, user, filterWarehouse]);
+  }, [items, searchTerm, isKeeper, user, filterWarehouse, showLowStockOnly]);
 
   const getDisplayStock = (item: InventoryItem): number => {
      if (filterWarehouse === 'all') {
@@ -268,21 +284,31 @@ const Inventory: React.FC = () => {
             value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <div className="w-full md:w-64 relative">
-          <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
-          <select 
-            disabled={isKeeper} // Khóa nếu là thủ kho
-            className="w-full pl-9 pr-8 py-3 text-sm border border-slate-200 rounded-xl appearance-none bg-slate-50/50 outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 font-black uppercase tracking-tighter"
-            value={filterWarehouse} onChange={(e) => setFilterWarehouse(e.target.value)}
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div className="w-full md:w-64 relative">
+            <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
+            <select 
+              disabled={isKeeper} // Khóa nếu là thủ kho
+              className="w-full pl-9 pr-8 py-3 text-sm border border-slate-200 rounded-xl appearance-none bg-slate-50/50 outline-none focus:ring-2 focus:ring-accent disabled:opacity-70 font-black uppercase tracking-tighter"
+              value={filterWarehouse} onChange={(e) => setFilterWarehouse(e.target.value)}
+            >
+              {!isKeeper && <option value="all">Tất cả kho hệ thống</option>}
+              {warehouses.map(wh => <option key={wh.id} value={wh.id}>{wh.name}</option>)}
+            </select>
+          </div>
+          <button 
+            onClick={() => setShowLowStockOnly(!showLowStockOnly)}
+            className={`flex items-center justify-center px-4 py-3 rounded-xl border transition-all text-[10px] font-black uppercase tracking-widest ${showLowStockOnly ? 'bg-red-50 border-red-200 text-red-600' : 'bg-white border-slate-200 text-slate-400'}`}
           >
-            {!isKeeper && <option value="all">Tất cả kho hệ thống</option>}
-            {warehouses.map(wh => <option key={wh.id} value={wh.id}>{wh.name}</option>)}
-          </select>
+            <AlertTriangle className={`w-4 h-4 mr-2 ${showLowStockOnly ? 'text-red-600' : 'text-slate-400'}`} />
+            Cảnh báo tồn
+          </button>
         </div>
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-        <div className="overflow-x-auto scrollbar-hide">
+        {/* Desktop Table View */}
+        <div className="hidden md:block overflow-x-auto scrollbar-hide">
           <table className="w-full text-left border-collapse min-w-[700px]">
             <thead>
               <tr className="bg-slate-50/50 border-b border-slate-100 text-slate-500 text-[10px] uppercase font-black tracking-widest">
@@ -334,14 +360,43 @@ const Inventory: React.FC = () => {
                   </tr>
                 );
               })}
-              {filteredItems.length === 0 && (
-                <tr>
-                   <td colSpan={6} className="p-32 text-center text-slate-300 font-black uppercase tracking-widest italic text-sm">Không có dữ liệu vật tư phù hợp.</td>
-                </tr>
-              )}
             </tbody>
           </table>
         </div>
+
+        {/* Mobile Card View */}
+        <div className="md:hidden divide-y divide-slate-100">
+          {filteredItems.map(item => {
+            const stock = getDisplayStock(item);
+            const isLow = stock <= item.minStock;
+            return (
+              <div key={item.id} className="p-4 space-y-3 active:bg-slate-50 transition-colors" onClick={() => setSelectedItem(item)}>
+                <div className="flex justify-between items-start">
+                  <div className="min-w-0 flex-1">
+                    <div className="text-[10px] font-mono text-slate-400 font-bold uppercase mb-0.5">{item.sku}</div>
+                    <h4 className="font-black text-slate-800 text-sm truncate pr-4">{item.name}</h4>
+                  </div>
+                  {isLow ? (
+                    <span className="bg-red-50 text-red-600 px-2 py-0.5 rounded-[4px] text-[8px] font-black uppercase border border-red-100 shrink-0">Sắp hết</span>
+                  ) : (
+                    <span className="bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded-[4px] text-[8px] font-black uppercase border border-emerald-100 shrink-0">An toàn</span>
+                  )}
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-slate-500 font-medium">{item.category}</span>
+                  <div className="text-right">
+                    <span className={`font-black text-sm ${isLow ? 'text-red-600' : 'text-slate-800'}`}>{stock.toLocaleString()}</span>
+                    <span className="text-[10px] text-slate-400 ml-1 uppercase font-bold">{item.unit}</span>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {filteredItems.length === 0 && (
+          <div className="p-20 text-center text-slate-300 font-black uppercase tracking-widest italic text-sm">Không có dữ liệu vật tư phù hợp.</div>
+        )}
       </div>
     </div>
   );

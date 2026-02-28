@@ -1,12 +1,13 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { TransactionType, Transaction, TransactionStatus, TransactionItem, InventoryItem, Role } from '../types';
 import { 
   Plus, Trash2, ArrowRight, Save, Send, Clock, 
   CheckCircle, XCircle, FileText, User, History, 
   AlertTriangle, Flame, ShieldAlert, PackageSearch,
-  ArrowDownLeft, ArrowUpRight, ArrowLeftRight, Inbox
+  ArrowDownLeft, ArrowUpRight, ArrowLeftRight, Inbox, Minus
 } from 'lucide-react';
 import ScannerModal from '../components/ScannerModal';
 import ItemSelectionModal from '../components/ItemSelectionModal';
@@ -16,8 +17,15 @@ import TransactionDetailModal from '../components/TransactionDetailModal';
 import MasterDataConfirmModal from '../components/MasterDataConfirmModal';
 
 const Operations: React.FC = () => {
+  const location = useLocation();
   const { items, warehouses, suppliers, users, user, transactions, addTransaction, updateTransactionStatus, clearTransactionHistory } = useApp();
   const [activeTab, setActiveTab] = useState<string>('IMPORT');
+
+  useEffect(() => {
+    if (location.state?.tab) {
+      setActiveTab(location.state.tab);
+    }
+  }, [location.state]);
   const [isScannerOpen, setScannerOpen] = useState(false);
   const [isItemSelectOpen, setItemSelectOpen] = useState(false);
   
@@ -231,13 +239,13 @@ const Operations: React.FC = () => {
       
       <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
         <div className="flex border-b border-slate-100 overflow-x-auto bg-slate-50/50 scrollbar-hide">
-          <button onClick={() => {setActiveTab('IMPORT'); setTxItems([]);}} className={`px-6 py-4 text-xs font-black uppercase tracking-widest border-b-2 transition-all ${activeTab === 'IMPORT' ? 'border-accent text-accent bg-white shadow-[0_-4px_0_inset_#2563eb]' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>Nhập kho</button>
-          <button onClick={() => {setActiveTab('EXPORT'); setTxItems([]);}} className={`px-6 py-4 text-xs font-black uppercase tracking-widest border-b-2 transition-all ${activeTab === 'EXPORT' ? 'border-accent text-accent bg-white shadow-[0_-4px_0_inset_#2563eb]' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>Xuất kho</button>
-          <button onClick={() => {setActiveTab('TRANSFER'); setTxItems([]);}} className={`px-6 py-4 text-xs font-black uppercase tracking-widest border-b-2 transition-all ${activeTab === 'TRANSFER' ? 'border-accent text-accent bg-white shadow-[0_-4px_0_inset_#2563eb]' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>Chuyển kho</button>
-          <button onClick={() => {setActiveTab('LIQUIDATION'); setTxItems([]);}} className={`px-6 py-4 text-xs font-black uppercase tracking-widest border-b-2 transition-all ${activeTab === 'LIQUIDATION' ? 'border-red-600 text-red-600 bg-white shadow-[0_-4px_0_inset_#dc2626]' : 'border-transparent text-slate-400 hover:text-red-400'}`}>Xuất hủy</button>
-          <button onClick={() => setActiveTab('PENDING')} className={`px-6 py-4 text-xs font-black uppercase tracking-widest border-b-2 transition-all relative ${activeTab === 'PENDING' ? 'border-orange-500 text-orange-600 bg-white shadow-[0_-4px_0_inset_#f97316]' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>
+          <button onClick={() => {setActiveTab('IMPORT'); setTxItems([]);}} className={`flex-1 min-w-[100px] px-4 py-4 text-[10px] md:text-xs font-black uppercase tracking-widest border-b-2 transition-all ${activeTab === 'IMPORT' ? 'border-accent text-accent bg-white shadow-[0_-4px_0_inset_#2563eb]' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>Nhập kho</button>
+          <button onClick={() => {setActiveTab('EXPORT'); setTxItems([]);}} className={`flex-1 min-w-[100px] px-4 py-4 text-[10px] md:text-xs font-black uppercase tracking-widest border-b-2 transition-all ${activeTab === 'EXPORT' ? 'border-accent text-accent bg-white shadow-[0_-4px_0_inset_#2563eb]' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>Xuất kho</button>
+          <button onClick={() => {setActiveTab('TRANSFER'); setTxItems([]);}} className={`flex-1 min-w-[100px] px-4 py-4 text-[10px] md:text-xs font-black uppercase tracking-widest border-b-2 transition-all ${activeTab === 'TRANSFER' ? 'border-accent text-accent bg-white shadow-[0_-4px_0_inset_#2563eb]' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>Chuyển kho</button>
+          <button onClick={() => {setActiveTab('LIQUIDATION'); setTxItems([]);}} className={`flex-1 min-w-[100px] px-4 py-4 text-[10px] md:text-xs font-black uppercase tracking-widest border-b-2 transition-all ${activeTab === 'LIQUIDATION' ? 'border-red-600 text-red-600 bg-white shadow-[0_-4px_0_inset_#dc2626]' : 'border-transparent text-slate-400 hover:text-red-400'}`}>Xuất hủy</button>
+          <button onClick={() => setActiveTab('PENDING')} className={`flex-1 min-w-[120px] px-4 py-4 text-[10px] md:text-xs font-black uppercase tracking-widest border-b-2 transition-all relative ${activeTab === 'PENDING' ? 'border-orange-500 text-orange-600 bg-white shadow-[0_-4px_0_inset_#f97316]' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>
             Quản lý phiếu
-            {(pendingAdminTxs.length + pendingReceiptTxs.length) > 0 && <span className="ml-2 bg-orange-500 text-white text-[10px] px-1.5 py-0.5 rounded-full ring-2 ring-white">{(pendingAdminTxs.length + pendingReceiptTxs.length)}</span>}
+            {(pendingAdminTxs.length + pendingReceiptTxs.length) > 0 && <span className="ml-2 bg-orange-500 text-white text-[8px] md:text-[10px] px-1.5 py-0.5 rounded-full ring-2 ring-white">{(pendingAdminTxs.length + pendingReceiptTxs.length)}</span>}
           </button>
         </div>
 
@@ -430,36 +438,65 @@ const Operations: React.FC = () => {
                   </button>
                 </div>
                 {txItems.length === 0 ? (
-                  <div onClick={() => setItemSelectOpen(true)} className="border-4 border-dashed border-slate-50 rounded-2xl p-16 text-center text-slate-300 font-black uppercase tracking-widest cursor-pointer hover:bg-slate-50 transition-all text-sm">Nhấn để chọn vật tư...</div>
+                  <div onClick={() => setItemSelectOpen(true)} className="border-4 border-dashed border-slate-50 rounded-2xl p-10 md:p-16 text-center text-slate-300 font-black uppercase tracking-widest cursor-pointer hover:bg-slate-50 transition-all text-sm">Nhấn để chọn vật tư...</div>
                 ) : (
-                  <div className="border border-slate-100 rounded-2xl overflow-hidden shadow-sm">
-                    <table className="w-full text-left">
-                      <thead className="bg-slate-50 text-[10px] uppercase text-slate-400 font-black tracking-widest border-b border-slate-100">
-                        <tr><th className="p-4">Sản phẩm</th><th className="p-4 w-32 text-center">Số lượng</th><th className="p-4 w-16"></th></tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100">
-                        {txItems.map((item, idx) => {
-                          const product = items.find(i => i.id === item.itemId);
-                          return (
-                            <tr key={idx} className="hover:bg-slate-50/50">
-                              <td className="p-4">
-                                <div className="font-black text-slate-800 text-sm">{product?.name}</div>
-                                <div className="text-[10px] text-slate-400 font-bold uppercase">{product?.sku}</div>
-                              </td>
-                              <td className="p-4">
-                                <div className="flex items-center gap-2">
-                                  <input type="number" min="1" value={item.quantity} onChange={(e) => setTxItems(txItems.map(ti => ti.itemId === item.itemId ? { ...ti, quantity: parseInt(e.target.value) } : ti))} className="w-full border-2 border-slate-100 rounded-lg px-2 py-1.5 text-center font-black text-accent outline-none focus:border-accent" />
-                                  <span className="text-[10px] font-black text-slate-400 uppercase">{product?.unit}</span>
-                                </div>
-                              </td>
-                              <td className="p-4 text-right">
-                                <button onClick={() => setTxItems(txItems.filter(ti => ti.itemId !== item.itemId))} className="text-slate-300 hover:text-red-500 p-2 rounded-lg transition-colors"><Trash2 size={18} /></button>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
+                  <div className="border border-slate-100 rounded-2xl overflow-hidden shadow-sm bg-white">
+                    {/* Desktop View */}
+                    <div className="hidden md:block">
+                      <table className="w-full text-left">
+                        <thead className="bg-slate-50 text-[10px] uppercase text-slate-400 font-black tracking-widest border-b border-slate-100">
+                          <tr><th className="p-4">Sản phẩm</th><th className="p-4 w-32 text-center">Số lượng</th><th className="p-4 w-16"></th></tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {txItems.map((item, idx) => {
+                            const product = items.find(i => i.id === item.itemId);
+                            return (
+                              <tr key={idx} className="hover:bg-slate-50/50">
+                                <td className="p-4">
+                                  <div className="font-black text-slate-800 text-sm">{product?.name}</div>
+                                  <div className="text-[10px] text-slate-400 font-bold uppercase">{product?.sku}</div>
+                                </td>
+                                <td className="p-4">
+                                  <div className="flex items-center gap-2">
+                                    <input type="number" min="1" value={item.quantity} onChange={(e) => setTxItems(txItems.map(ti => ti.itemId === item.itemId ? { ...ti, quantity: parseInt(e.target.value) } : ti))} className="w-full border-2 border-slate-100 rounded-lg px-2 py-1.5 text-center font-black text-accent outline-none focus:border-accent" />
+                                    <span className="text-[10px] font-black text-slate-400 uppercase">{product?.unit}</span>
+                                  </div>
+                                </td>
+                                <td className="p-4 text-right">
+                                  <button onClick={() => setTxItems(txItems.filter(ti => ti.itemId !== item.itemId))} className="text-slate-300 hover:text-red-500 p-2 rounded-lg transition-colors"><Trash2 size={18} /></button>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Mobile View */}
+                    <div className="md:hidden divide-y divide-slate-100">
+                      {txItems.map((item, idx) => {
+                        const product = items.find(i => i.id === item.itemId);
+                        return (
+                          <div key={idx} className="p-4 space-y-3">
+                            <div className="flex justify-between items-start">
+                              <div className="min-w-0 flex-1">
+                                <div className="text-[10px] font-mono text-slate-400 font-bold uppercase mb-0.5">{product?.sku}</div>
+                                <h4 className="font-black text-slate-800 text-sm truncate pr-4">{product?.name}</h4>
+                              </div>
+                              <button onClick={() => setTxItems(txItems.filter(ti => ti.itemId !== item.itemId))} className="p-2 text-slate-300 hover:text-red-600 transition-colors shrink-0"><Trash2 size={18} /></button>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-[10px] text-slate-400 font-bold uppercase">Số lượng:</span>
+                              <div className="flex items-center gap-3 bg-slate-50 p-1 rounded-lg border border-slate-100">
+                                <button onClick={() => setTxItems(txItems.map(ti => ti.itemId === item.itemId ? { ...ti, quantity: Math.max(1, ti.quantity - 1) } : ti))} className="p-1.5 bg-white rounded border border-slate-200 text-slate-400"><Minus size={14} /></button>
+                                <span className="w-8 text-center font-black text-sm">{item.quantity}</span>
+                                <button onClick={() => setTxItems(txItems.map(ti => ti.itemId === item.itemId ? { ...ti, quantity: ti.quantity + 1 } : ti))} className="p-1.5 bg-white rounded border border-slate-200 text-slate-400"><Plus size={14} /></button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
               </div>

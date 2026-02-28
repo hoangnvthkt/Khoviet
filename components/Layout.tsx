@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
+import BottomNav from './BottomNav';
 import { useApp } from '../context/AppContext';
 import { RefreshCw, Menu, AlertTriangle, ExternalLink } from 'lucide-react';
 
@@ -27,21 +28,21 @@ const Layout: React.FC = () => {
              <ul className="text-xs text-slate-600 space-y-2 font-medium">
                 <li className="flex items-start gap-2">
                    <span className="w-1.5 h-1.5 rounded-full bg-red-400 mt-1.5 shrink-0"></span>
-                   Kiểm tra và dán API Key thực tế vào file <code>lib/firebase.ts</code>.
+                   Kiểm tra và dán API Key thực tế vào file <code>lib/supabase.ts</code>.
                 </li>
                 <li className="flex items-start gap-2">
                    <span className="w-1.5 h-1.5 rounded-full bg-red-400 mt-1.5 shrink-0"></span>
-                   Đảm bảo Cloud Firestore API đã được bật trong Google Cloud Console.
+                   Đảm bảo Supabase Project đã được cấu hình đúng URL và Anon Key.
                 </li>
              </ul>
           </div>
           <div className="flex flex-col gap-2">
             <a 
-              href="https://console.firebase.google.com/" 
+              href="https://supabase.com/dashboard" 
               target="_blank" 
               className="w-full py-3 bg-primary text-white rounded-xl font-black uppercase text-xs tracking-widest hover:bg-slate-800 transition shadow-xl shadow-slate-900/20 flex items-center justify-center gap-2"
             >
-              Mở Firebase Console <ExternalLink size={14} />
+              Mở Supabase Dashboard <ExternalLink size={14} />
             </a>
             <button 
               onClick={() => window.location.reload()}
@@ -85,7 +86,7 @@ const Layout: React.FC = () => {
              <div className="h-full w-full flex flex-col items-center justify-center bg-white/50 backdrop-blur-sm animate-in fade-in duration-300">
                 <RefreshCw size={48} className="text-accent animate-spin mb-4" />
                 <h3 className="text-xl font-bold text-slate-800">
-                   {isLoading ? "Đang kết nối Cloud Firestore..." : "Đang đồng bộ dữ liệu..."}
+                   {isLoading ? "Đang kết nối Supabase..." : "Đang đồng bộ dữ liệu..."}
                 </h3>
                 <p className="text-slate-500 font-medium">Hệ thống đang thiết lập môi trường vận hành an toàn.</p>
              </div>
@@ -95,6 +96,7 @@ const Layout: React.FC = () => {
              </div>
            )}
         </main>
+        <BottomNav />
       </div>
     </div>
   );
