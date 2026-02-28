@@ -21,6 +21,16 @@ const Operations: React.FC = () => {
   const { items, warehouses, suppliers, users, user, transactions, addTransaction, updateTransactionStatus, clearTransactionHistory } = useApp();
   const [activeTab, setActiveTab] = useState<string>('IMPORT');
 
+  if (user.role === Role.ACCOUNTANT) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[60vh] text-slate-400">
+        <ShieldAlert size={48} className="mb-4 opacity-20" />
+        <h2 className="text-xl font-black uppercase tracking-widest">Truy cập bị từ chối</h2>
+        <p className="text-sm font-medium">Bạn không có quyền thực hiện nghiệp vụ kho.</p>
+      </div>
+    );
+  }
+
   useEffect(() => {
     if (location.state?.tab) {
       setActiveTab(location.state.tab);

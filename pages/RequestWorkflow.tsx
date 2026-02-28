@@ -2,12 +2,22 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { MaterialRequest, RequestStatus, Role } from '../types';
-import { Plus, Search, FileText, ArrowRight, Truck, CheckCircle, Clock, AlertCircle, Inbox, Send as SendIcon, PackageSearch } from 'lucide-react';
+import { Plus, Search, FileText, ArrowRight, Truck, CheckCircle, Clock, AlertCircle, Inbox, Send as SendIcon, PackageSearch, ShieldAlert } from 'lucide-react';
 import RequestModal from '../components/RequestModal';
 
 const RequestWorkflow: React.FC = () => {
   const { requests, warehouses, user, users } = useApp();
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
+
+  if (user.role === Role.ACCOUNTANT) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[60vh] text-slate-400">
+        <ShieldAlert size={48} className="mb-4 opacity-20" />
+        <h2 className="text-xl font-black uppercase tracking-widest">Truy cập bị từ chối</h2>
+        <p className="text-sm font-medium">Bạn không có quyền điều phối vật tư.</p>
+      </div>
+    );
+  }
   const [searchTerm, setSearchTerm] = useState('');
   
   const [isModalOpen, setModalOpen] = useState(false);
@@ -15,11 +25,11 @@ const RequestWorkflow: React.FC = () => {
 
   const filteredRequests = useMemo(() => {
      return requests.filter(req => {
-        const isAdminOrAccountant = user.role === Role.ADMIN || user.role === Role.ACCOUNTANT;
+        const isAdmin = user.role === Role.ADMIN;
         const isSiteKeeper = user.assignedWarehouseId && req.siteWarehouseId === user.assignedWarehouseId;
         const isSourceKeeper = user.assignedWarehouseId && req.sourceWarehouseId === user.assignedWarehouseId;
 
-        if (!isAdminOrAccountant && !isSiteKeeper && !isSourceKeeper) return false;
+        if (!isAdmin && !isSiteKeeper && !isSourceKeeper) return false;
 
         const matchStatus = filterStatus === 'ALL' || req.status === filterStatus;
         const matchSearch = req.code.toLowerCase().includes(searchTerm.toLowerCase());
@@ -164,7 +174,7 @@ const RequestWorkflow: React.FC = () => {
                               </button>
                           )}
 
-                          {req.status === RequestStatus.PENDING && (user.role === Role.ADMIN || user.role === Role.ACCOUNTANT) && (
+                          {req.status === RequestStatus.PENDING && user.role === Role.ADMIN && (
                               <button className="w-full px-4 py-2 bg-yellow-500 text-white rounded-lg text-xs font-bold hover:bg-yellow-600 flex items-center justify-center transition-all shadow-md shadow-yellow-500/20 whitespace-nowrap">
                                  <AlertCircle size={14} className="mr-2" /> THẨM ĐỊNH PHIẾU
                               </button>

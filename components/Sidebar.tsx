@@ -52,15 +52,17 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggle }) => {
 
   const navItems = [
     { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
-    { to: '/requests', icon: FileText, label: 'Đề xuất vật tư', badge: pendingReqCount > 0 ? pendingReqCount : null },
+    { to: '/requests', icon: FileText, label: 'Đề xuất vật tư', badge: pendingReqCount > 0 ? pendingReqCount : null, roles: [Role.ADMIN, Role.KEEPER] },
     { to: '/inventory', icon: Package, label: 'Kho & Vật tư' },
-    { to: '/operations', icon: ArrowLeftRight, label: 'Nhập / Xuất', badge: pendingTxCount > 0 ? pendingTxCount : null },
+    { to: '/operations', icon: ArrowLeftRight, label: 'Nhập / Xuất', badge: pendingTxCount > 0 ? pendingTxCount : null, roles: [Role.ADMIN, Role.KEEPER] },
     { to: '/audit', icon: ClipboardCheck, label: 'Kiểm kê' },
     { to: '/reports', icon: History, label: 'Báo cáo' },
   ];
 
+  const filteredNavItems = navItems.filter(item => !item.roles || item.roles.includes(user.role));
+
   if (user.role === Role.ADMIN) {
-    navItems.push({ to: '/settings', icon: Settings, label: 'Cấu hình' });
+    filteredNavItems.push({ to: '/settings', icon: Settings, label: 'Cấu hình' });
   }
 
   const assignedWh = warehouses.find(w => w.id === user.assignedWarehouseId);
@@ -103,7 +105,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggle }) => {
         </div>
 
         <nav className="px-3 py-2 space-y-1">
-          {navItems.map((item) => (
+          {filteredNavItems.map((item) => (
             <NavLink 
               key={item.to} 
               to={item.to} 

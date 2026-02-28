@@ -75,7 +75,7 @@ const Settings: React.FC = () => {
   const handleSaveGeneral = (e: React.FormEvent) => {
     e.preventDefault();
     if (!appName.trim()) return;
-    updateAppSettings({ name: appName, logo: appLogo });
+    updateAppSettings({ ...appSettings, name: appName, logo: appLogo });
     alert("Đã cập nhật cấu hình ứng dụng!");
   };
 

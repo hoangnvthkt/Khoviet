@@ -49,6 +49,14 @@ const UserModal: React.FC<UserModalProps> = ({ isOpen, onClose, onSave, userToEd
     return Object.keys(newErrors).length === 0;
   };
 
+  const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => setFormData({ ...formData, avatar: event.target?.result as string });
+    reader.readAsDataURL(file);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
@@ -80,6 +88,24 @@ const UserModal: React.FC<UserModalProps> = ({ isOpen, onClose, onSave, userToEd
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {/* Avatar Upload */}
+          <div className="flex flex-col items-center gap-3 pb-4 border-b border-slate-50">
+            <div className="relative group">
+              <img 
+                src={formData.avatar || `https://i.pravatar.cc/150?u=${formData.email || 'default'}`} 
+                alt="Avatar" 
+                className="w-20 h-20 rounded-full object-cover border-4 border-slate-100 group-hover:opacity-75 transition-opacity" 
+              />
+              <label className="absolute inset-0 flex items-center justify-center cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="bg-black/50 p-2 rounded-full text-white">
+                  <Save size={16} />
+                </div>
+                <input type="file" className="hidden" accept="image/*" onChange={handleAvatarUpload} />
+              </label>
+            </div>
+            <p className="text-[10px] font-bold text-slate-400 uppercase">Nhấp vào ảnh để đổi Avatar</p>
+          </div>
+
           {/* Họ tên */}
           <div className="space-y-1">
             <label className="text-xs font-bold text-slate-500 uppercase flex items-center">

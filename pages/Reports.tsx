@@ -151,6 +151,7 @@ const Reports: React.FC = () => {
   };
 
   const isAdmin = user.role === Role.ADMIN;
+  const isAccountant = user.role === Role.ACCOUNTANT;
 
   return (
     <div className="space-y-6">
@@ -191,11 +192,11 @@ const Reports: React.FC = () => {
             <Building size={12} className="mr-1" /> Kho lưu trữ
           </label>
           <select 
-            disabled={!isAdmin}
+            disabled={!isAdmin && !isAccountant}
             value={selectedWh} onChange={e => setSelectedWh(e.target.value)}
             className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold outline-none focus:ring-2 focus:ring-accent disabled:opacity-60"
           >
-            {isAdmin && <option value="ALL">Tất cả kho (Toàn công ty)</option>}
+            {(isAdmin || isAccountant) && <option value="ALL">Tất cả kho (Toàn công ty)</option>}
             {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
           </select>
         </div>

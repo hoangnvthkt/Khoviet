@@ -6,7 +6,7 @@ import {
   CheckCircle2, History, Warehouse as WarehouseIcon,
   ArrowRight, Package, Info
 } from 'lucide-react';
-import { TransactionType, TransactionStatus, InventoryItem } from '../types';
+import { TransactionType, TransactionStatus, InventoryItem, Role } from '../types';
 import ScannerModal from '../components/ScannerModal';
 
 const Audit: React.FC = () => {
@@ -45,8 +45,10 @@ const Audit: React.FC = () => {
     setScannerOpen(false);
   };
 
+  const isAccountant = user.role === Role.ACCOUNTANT;
+
   const handleSaveAudit = async () => {
-    if (!selectedWhId || Object.keys(auditData).length === 0) return;
+    if (!selectedWhId || Object.keys(auditData).length === 0 || isAccountant) return;
     
     setIsSaving(true);
     
@@ -110,13 +112,15 @@ const Audit: React.FC = () => {
           <p className="text-slate-500 text-sm font-medium">Đối soát tồn kho thực tế và hệ thống.</p>
         </div>
         <div className="flex gap-2">
-          <button 
-            disabled={Object.keys(auditData).length === 0 || isSaving}
-            onClick={handleSaveAudit}
-            className="flex items-center px-6 py-2.5 bg-accent text-white rounded-xl hover:bg-blue-700 transition font-black uppercase text-[10px] tracking-widest shadow-lg shadow-blue-500/20 disabled:opacity-50 disabled:shadow-none"
-          >
-            {isSaving ? 'Đang lưu...' : <><Save size={16} className="mr-2" /> Hoàn tất kiểm kê</>}
-          </button>
+          {!isAccountant && (
+            <button 
+              disabled={Object.keys(auditData).length === 0 || isSaving}
+              onClick={handleSaveAudit}
+              className="flex items-center px-6 py-2.5 bg-accent text-white rounded-xl hover:bg-blue-700 transition font-black uppercase text-[10px] tracking-widest shadow-lg shadow-blue-500/20 disabled:opacity-50 disabled:shadow-none"
+            >
+              {isSaving ? 'Đang lưu...' : <><Save size={16} className="mr-2" /> Hoàn tất kiểm kê</>}
+            </button>
+          )}
         </div>
       </div>
 
@@ -246,10 +250,11 @@ const Audit: React.FC = () => {
                             <input 
                               type="number"
                               min="0"
-                              placeholder="Nhập số..."
+                              placeholder={isAccountant ? "Chỉ xem" : "Nhập số..."}
                               value={actualStock === undefined ? '' : actualStock}
                               onChange={(e) => handleUpdateActual(item.id, e.target.value)}
-                              className="w-24 px-3 py-2 text-center border border-slate-200 rounded-lg font-black text-slate-800 focus:ring-2 focus:ring-accent outline-none"
+                              disabled={isAccountant}
+                              className="w-24 px-3 py-2 text-center border border-slate-200 rounded-lg font-black text-slate-800 focus:ring-2 focus:ring-accent outline-none disabled:bg-slate-50 disabled:text-slate-400"
                             />
                           </td>
                           <td className="p-4 text-center">

@@ -40,15 +40,17 @@ const BottomNav: React.FC = () => {
 
   const navItems = [
     { to: '/', icon: LayoutDashboard, label: 'Home' },
-    { to: '/requests', icon: FileText, label: 'Đề xuất', badge: pendingReqCount > 0 ? pendingReqCount : null },
+    { to: '/requests', icon: FileText, label: 'Đề xuất', badge: pendingReqCount > 0 ? pendingReqCount : null, roles: [Role.ADMIN, Role.KEEPER] },
     { to: '/inventory', icon: Package, label: 'Kho' },
-    { to: '/operations', icon: ArrowLeftRight, label: 'Nghiệp vụ', badge: pendingTxCount > 0 ? pendingTxCount : null },
+    { to: '/operations', icon: ArrowLeftRight, label: 'Nghiệp vụ', badge: pendingTxCount > 0 ? pendingTxCount : null, roles: [Role.ADMIN, Role.KEEPER] },
     { to: '/audit', icon: ClipboardCheck, label: 'Kiểm kê' },
   ];
 
+  const filteredNavItems = navItems.filter(item => !item.roles || item.roles.includes(user.role));
+
   return (
     <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 px-2 py-1 flex justify-around items-center z-40 shadow-[0_-4px_10px_rgba(0,0,0,0.05)]">
-      {navItems.map((item) => (
+      {filteredNavItems.map((item) => (
         <NavLink 
           key={item.to} 
           to={item.to} 

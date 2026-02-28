@@ -225,13 +225,15 @@ const Dashboard: React.FC = () => {
           color="bg-red-500" 
           onClick={() => navigate('/inventory', { state: { filter: 'low' } })}
         />
-        <StatCard 
-          title="Chờ phê duyệt" 
-          value={stats.pendingTx.toString()} 
-          icon={Clock} 
-          color="bg-orange-500" 
-          onClick={() => navigate('/operations', { state: { tab: 'PENDING' } })}
-        />
+        {user.role !== Role.ACCOUNTANT && (
+          <StatCard 
+            title="Chờ phê duyệt" 
+            value={stats.pendingTx.toString()} 
+            icon={Clock} 
+            color="bg-orange-500" 
+            onClick={() => navigate('/operations', { state: { tab: 'PENDING' } })}
+          />
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

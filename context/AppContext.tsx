@@ -13,6 +13,7 @@ import {
 } from '../constants';
 
 interface AppSettings {
+  id: string;
   name: string;
   logo: string;
 }
@@ -69,7 +70,7 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User>(MOCK_USERS[0]);
   const [users, setUsers] = useState<User[]>(isSupabaseConfigured ? [] : MOCK_USERS);
-  const [appSettings, setAppSettings] = useState<AppSettings>({ name: 'KhoViet', logo: '' });
+  const [appSettings, setAppSettings] = useState<AppSettings>({ id: 'main-settings', name: 'KhoViet', logo: '' });
   const [items, setItems] = useState<InventoryItem[]>(isSupabaseConfigured ? [] : MOCK_ITEMS);
   const [warehouses, setWarehouses] = useState<Warehouse[]>(MOCK_WAREHOUSES);
   const [suppliers, setSuppliers] = useState<Supplier[]>(isSupabaseConfigured ? [] : MOCK_SUPPLIERS);
@@ -462,6 +463,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           avatar: data.avatar,
           phone: data.phone,
           assigned_warehouse_id: data.assignedWarehouseId
+        };
+      } else if (table === 'app_settings') {
+        payload = {
+          id: data.id || 'main-settings',
+          name: data.name,
+          logo: data.logo
         };
       }
 
