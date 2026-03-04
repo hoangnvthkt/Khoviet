@@ -6,24 +6,25 @@ import { Shield, Lock, User as UserIcon, AlertCircle, Info } from 'lucide-react'
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
-  const { users, setUser } = useApp();
+  const { login } = useApp();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [showForgotMsg, setShowForgotMsg] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
-    const foundUser = users.find(u => u.username === username && u.password === password);
-
-    if (foundUser) {
-      setUser(foundUser);
-      localStorage.setItem('khoviet_user', JSON.stringify(foundUser));
-      navigate('/');
-    } else {
-      setError('Tên đăng nhập hoặc mật khẩu không chính xác.');
+    try {
+      const loggedUser = await login(username, password);
+      if (loggedUser) {
+        navigate('/');
+      } else {
+        setError('Tên đăng nhập hoặc mật khẩu không chính xác.');
+      }
+    } catch (err: any) {
+      setError(err.message || 'Tập tín đăng nhập không hợp lệ hoặc lỗi kết nối.');
     }
   };
 
@@ -35,7 +36,7 @@ const Login: React.FC = () => {
             <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-accent rounded-full blur-3xl"></div>
             <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-500 rounded-full blur-3xl"></div>
           </div>
-          
+
           <div className="w-16 h-16 bg-accent rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-blue-500/20 relative z-10">
             <Shield className="text-white w-8 h-8" />
           </div>
@@ -56,8 +57,8 @@ const Login: React.FC = () => {
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Tên đăng nhập</label>
               <div className="relative">
                 <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   required
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
@@ -71,8 +72,8 @@ const Login: React.FC = () => {
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Mật khẩu</label>
               <div className="relative">
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
-                <input 
-                  type="password" 
+                <input
+                  type="password"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -87,7 +88,7 @@ const Login: React.FC = () => {
                 <input id="remember" type="checkbox" className="w-4 h-4 text-accent border-slate-300 rounded focus:ring-accent" />
                 <label htmlFor="remember" className="ml-2 text-xs font-bold text-slate-500">Ghi nhớ đăng nhập</label>
               </div>
-              <button 
+              <button
                 type="button"
                 onClick={() => setShowForgotMsg(true)}
                 className="text-xs font-bold text-accent hover:text-blue-700 transition-colors"
@@ -96,7 +97,7 @@ const Login: React.FC = () => {
               </button>
             </div>
 
-            <button 
+            <button
               type="submit"
               className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg shadow-slate-200 active:scale-[0.98]"
             >
@@ -110,7 +111,7 @@ const Login: React.FC = () => {
               <div className="space-y-1">
                 <p className="text-xs font-bold">Hỗ trợ khôi phục mật khẩu</p>
                 <p className="text-[11px] font-medium opacity-80">Vui lòng liên hệ với Quản trị viên (Admin) của hệ thống để được cấp lại mật khẩu mới.</p>
-                <button 
+                <button
                   onClick={() => setShowForgotMsg(false)}
                   className="text-[10px] font-black uppercase tracking-widest mt-2 hover:underline"
                 >

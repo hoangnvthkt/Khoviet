@@ -48,7 +48,7 @@ const UserModal: React.FC<UserModalProps> = ({ isOpen, onClose, onSave, userToEd
     if (!formData.username?.trim()) newErrors.username = 'Vui lòng nhập tên đăng nhập';
     if (!userToEdit && !formData.password?.trim()) newErrors.password = 'Vui lòng nhập mật khẩu';
     if (!formData.role) newErrors.role = 'Vui lòng chọn chức vụ';
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -58,7 +58,7 @@ const UserModal: React.FC<UserModalProps> = ({ isOpen, onClose, onSave, userToEd
     if (!validate()) return;
 
     const finalUser: User = {
-      id: userToEdit?.id || `u-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      id: userToEdit?.id || crypto.randomUUID(),
       name: formData.name || '',
       email: formData.email || '',
       username: formData.username || '',
@@ -91,7 +91,7 @@ const UserModal: React.FC<UserModalProps> = ({ isOpen, onClose, onSave, userToEd
             <label className="text-xs font-bold text-slate-500 uppercase flex items-center">
               <UserIcon size={12} className="mr-1" /> Họ và tên
             </label>
-            <input 
+            <input
               type="text"
               value={formData.name}
               onChange={e => setFormData({ ...formData, name: e.target.value })}
@@ -107,7 +107,7 @@ const UserModal: React.FC<UserModalProps> = ({ isOpen, onClose, onSave, userToEd
               <label className="text-xs font-bold text-slate-500 uppercase flex items-center">
                 <Mail size={12} className="mr-1" /> Email
               </label>
-              <input 
+              <input
                 type="email"
                 value={formData.email}
                 onChange={e => setFormData({ ...formData, email: e.target.value })}
@@ -122,7 +122,7 @@ const UserModal: React.FC<UserModalProps> = ({ isOpen, onClose, onSave, userToEd
               <label className="text-xs font-bold text-slate-500 uppercase flex items-center">
                 <Phone size={12} className="mr-1" /> Số điện thoại
               </label>
-              <input 
+              <input
                 type="tel"
                 value={formData.phone}
                 onChange={e => setFormData({ ...formData, phone: e.target.value })}
@@ -138,7 +138,7 @@ const UserModal: React.FC<UserModalProps> = ({ isOpen, onClose, onSave, userToEd
               <label className="text-xs font-bold text-slate-500 uppercase flex items-center">
                 <UserIcon size={12} className="mr-1" /> Tên đăng nhập
               </label>
-              <input 
+              <input
                 type="text"
                 value={formData.username}
                 onChange={e => setFormData({ ...formData, username: e.target.value })}
@@ -153,7 +153,7 @@ const UserModal: React.FC<UserModalProps> = ({ isOpen, onClose, onSave, userToEd
               <label className="text-xs font-bold text-slate-500 uppercase flex items-center">
                 <Shield size={12} className="mr-1" /> {userToEdit ? 'Mật khẩu mới (để trống nếu không đổi)' : 'Mật khẩu'}
               </label>
-              <input 
+              <input
                 type="password"
                 value={formData.password}
                 onChange={e => setFormData({ ...formData, password: e.target.value })}
@@ -170,7 +170,7 @@ const UserModal: React.FC<UserModalProps> = ({ isOpen, onClose, onSave, userToEd
               <label className="text-xs font-bold text-slate-500 uppercase flex items-center">
                 <Shield size={12} className="mr-1" /> Chức vụ
               </label>
-              <select 
+              <select
                 value={formData.role}
                 onChange={e => setFormData({ ...formData, role: e.target.value as Role })}
                 className="w-full p-2.5 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-accent bg-white"
@@ -187,7 +187,7 @@ const UserModal: React.FC<UserModalProps> = ({ isOpen, onClose, onSave, userToEd
               <label className="text-xs font-bold text-slate-500 uppercase flex items-center">
                 <Building size={12} className="mr-1" /> Làm việc tại
               </label>
-              <select 
+              <select
                 value={formData.assignedWarehouseId || ''}
                 onChange={e => setFormData({ ...formData, assignedWarehouseId: e.target.value })}
                 className="w-full p-2.5 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-accent bg-white"
@@ -205,14 +205,14 @@ const UserModal: React.FC<UserModalProps> = ({ isOpen, onClose, onSave, userToEd
           </p>
 
           <div className="pt-4 flex gap-3">
-            <button 
+            <button
               type="button"
               onClick={onClose}
               className="flex-1 py-2.5 border border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-50 transition-colors"
             >
               Hủy
             </button>
-            <button 
+            <button
               type="submit"
               className="flex-1 py-2.5 bg-accent text-white rounded-xl font-bold hover:bg-blue-700 transition-colors flex items-center justify-center shadow-lg shadow-blue-500/30"
             >

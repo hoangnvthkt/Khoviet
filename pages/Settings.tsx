@@ -1,10 +1,9 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
-import { isSupabaseConfigured } from '../lib/supabase';
 import { Warehouse, WarehouseType, Supplier, ItemCategory, ItemUnit } from '../types';
-import { 
-  Building, MapPin, Plus, X, Save, Settings as SettingsIcon, Users, 
+import {
+  Building, MapPin, Plus, X, Save, Settings as SettingsIcon, Users,
   HardHat, Briefcase, Tag, Ruler, Trash2, Edit2,
   Image as ImageIcon, Globe, Upload, Trash, Truck, User as UserIcon, Search, AlertCircle,
   Database, Mail, Phone, Shield, MoreVertical
@@ -13,20 +12,22 @@ import MasterDataConfirmModal from '../components/MasterDataConfirmModal';
 import UserModal from '../components/UserModal';
 import DeleteUserModal from '../components/DeleteUserModal';
 import { Role, User } from '../types';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
 const Settings: React.FC = () => {
-  const { 
+  const {
     warehouses, addWarehouse, updateWarehouse, removeWarehouse, categories, units, suppliers,
-    addCategory, updateCategory, removeCategory, 
-    addUnit, updateUnit, removeUnit, 
+    addCategory, updateCategory, removeCategory,
+    addUnit, updateUnit, removeUnit,
     addSupplier, updateSupplier, removeSupplier,
     appSettings, updateAppSettings, clearAllData, connectionError,
     users, addUser, updateUser, removeUser, user: currentUser, logout
   } = useApp();
-  
+
   const [activeTab, setActiveTab] = useState('general');
   const [isWhModalOpen, setIsWhModalOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
 
   // User Management States
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
@@ -44,7 +45,7 @@ const Settings: React.FC = () => {
     onConfirm: () => void;
     countdown: boolean;
   }>({
-    isOpen: false, title: '', message: '', type: 'warning', actionLabel: '', onConfirm: () => {}, countdown: true
+    isOpen: false, title: '', message: '', type: 'warning', actionLabel: '', onConfirm: () => { }, countdown: true
   });
 
   // General settings form state
@@ -56,11 +57,11 @@ const Settings: React.FC = () => {
   const [newWhName, setNewWhName] = useState('');
   const [newWhAddress, setNewWhAddress] = useState('');
   const [newWhType, setNewWhType] = useState<WarehouseType>('SITE');
-  
+
   // Master data state management
   const [activeMasterSection, setActiveMasterSection] = useState<'categories' | 'units' | 'suppliers' | null>(null);
   const [editingItem, setEditingItem] = useState<{ type: 'cat' | 'unit' | 'sup', data: any } | null>(null);
-  
+
   // Input fields for adding
   const [newCatName, setNewCatName] = useState('');
   const [newUnitName, setNewUnitName] = useState('');
@@ -92,6 +93,18 @@ const Settings: React.FC = () => {
     reader.readAsDataURL(file);
   };
 
+  const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const base64 = event.target?.result as string;
+      updateUser({ ...currentUser, avatar: base64 });
+      alert("Đã cập nhật ảnh đại diện thành công!");
+    };
+    reader.readAsDataURL(file);
+  };
+
   // Warehouse Handlers
   const handleAddWarehouse = (e: React.FormEvent) => {
     e.preventDefault();
@@ -104,22 +117,22 @@ const Settings: React.FC = () => {
         'warning',
         'Cập nhật ngay',
         () => {
-          updateWarehouse({ 
-            ...editingWarehouse, 
-            name: newWhName, 
-            address: newWhAddress, 
-            type: newWhType 
+          updateWarehouse({
+            ...editingWarehouse,
+            name: newWhName,
+            address: newWhAddress,
+            type: newWhType
           });
           setEditingWarehouse(null);
           setNewWhName(''); setNewWhAddress(''); setIsWhModalOpen(false);
         }
       );
     } else {
-      addWarehouse({ 
-        id: `wh-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`, 
-        name: newWhName, 
-        address: newWhAddress, 
-        type: newWhType 
+      addWarehouse({
+        id: `wh-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+        name: newWhName,
+        address: newWhAddress,
+        type: newWhType
       });
       setNewWhName(''); setNewWhAddress(''); setIsWhModalOpen(false);
     }
@@ -145,10 +158,10 @@ const Settings: React.FC = () => {
 
   // Master Data CRUD with Confirmation
   const triggerAction = (
-    title: string, 
-    message: string, 
-    type: 'danger' | 'warning' | 'success', 
-    actionLabel: string, 
+    title: string,
+    message: string,
+    type: 'danger' | 'warning' | 'success',
+    actionLabel: string,
     onConfirm: () => void,
     countdown: boolean = true
   ) => {
@@ -158,7 +171,7 @@ const Settings: React.FC = () => {
   // CRUD for Categories
   const handleAddCat = () => {
     if (!newCatName.trim()) return;
-    
+
     if (editingItem && editingItem.type === 'cat') {
       const cat = editingItem.data as ItemCategory;
       triggerAction(
@@ -196,7 +209,7 @@ const Settings: React.FC = () => {
   // CRUD for Units
   const handleAddUnit = () => {
     if (!newUnitName.trim()) return;
-    
+
     if (editingItem && editingItem.type === 'unit') {
       const unit = editingItem.data as ItemUnit;
       triggerAction(
@@ -234,7 +247,7 @@ const Settings: React.FC = () => {
   // CRUD for Suppliers
   const handleAddSup = () => {
     if (!newSup.name.trim() || !newSup.phone.trim()) return;
-    
+
     if (editingItem && editingItem.type === 'sup') {
       const sup = editingItem.data as Supplier;
       triggerAction(
@@ -243,23 +256,23 @@ const Settings: React.FC = () => {
         'warning',
         'Lưu thông tin',
         () => {
-          updateSupplier({ 
-            ...sup, 
-            name: newSup.name.trim(), 
-            contactPerson: newSup.contact.trim(), 
-            phone: newSup.phone.trim() 
+          updateSupplier({
+            ...sup,
+            name: newSup.name.trim(),
+            contactPerson: newSup.contact.trim(),
+            phone: newSup.phone.trim()
           });
           setEditingItem(null);
           setNewSup({ name: '', contact: '', phone: '' });
         }
       );
     } else {
-      addSupplier({ 
-        id: `sup-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`, 
-        name: newSup.name, 
-        contactPerson: newSup.contact, 
-        phone: newSup.phone, 
-        debt: 0 
+      addSupplier({
+        id: `sup-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+        name: newSup.name,
+        contactPerson: newSup.contact,
+        phone: newSup.phone,
+        debt: 0
       });
       setNewSup({ name: '', contact: '', phone: '' });
     }
@@ -267,10 +280,10 @@ const Settings: React.FC = () => {
 
   const handleEditSup = (sup: Supplier) => {
     setEditingItem({ type: 'sup', data: sup });
-    setNewSup({ 
-      name: sup.name, 
-      contact: sup.contactPerson || '', 
-      phone: sup.phone 
+    setNewSup({
+      name: sup.name,
+      contact: sup.contactPerson || '',
+      phone: sup.phone
     });
   };
 
@@ -321,18 +334,13 @@ const Settings: React.FC = () => {
     setIsUserModalOpen(false);
   };
 
-  const handleChangePassword = (e: React.FormEvent) => {
+  const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setPassError('');
     setPassSuccess('');
 
-    if (passwords.current !== currentUser.password) {
-      setPassError('Mật khẩu hiện tại không chính xác.');
-      return;
-    }
-
-    if (passwords.new.length < 3) {
-      setPassError('Mật khẩu mới phải có ít nhất 3 ký tự.');
+    if (passwords.new.length < 6) {
+      setPassError('Mật khẩu mới phải có ít nhất 6 ký tự.');
       return;
     }
 
@@ -341,9 +349,41 @@ const Settings: React.FC = () => {
       return;
     }
 
-    updateUser({ ...currentUser, password: passwords.new });
-    setPassSuccess('Đã đổi mật khẩu thành công!');
-    setPasswords({ current: '', new: '', confirm: '' });
+    if (isSupabaseConfigured) {
+      try {
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email: currentUser.email,
+          password: passwords.current,
+        });
+
+        if (signInError) {
+          setPassError('Mật khẩu hiện tại không chính xác.');
+          return;
+        }
+
+        const { error: updateError } = await supabase.auth.updateUser({
+          password: passwords.new
+        });
+
+        if (updateError) {
+          setPassError('Có lỗi xảy ra khi cập nhật mật khẩu.');
+          return;
+        }
+
+        setPassSuccess('Đã đổi mật khẩu thành công!');
+        setPasswords({ current: '', new: '', confirm: '' });
+      } catch (err: any) {
+        setPassError(err.message || 'Có lỗi xảy ra.');
+      }
+    } else {
+      if (passwords.current !== currentUser.password) {
+        setPassError('Mật khẩu hiện tại không chính xác.');
+        return;
+      }
+      updateUser({ ...currentUser, password: passwords.new });
+      setPassSuccess('Đã đổi mật khẩu thành công!');
+      setPasswords({ current: '', new: '', confirm: '' });
+    }
   };
 
   const getRoleBadge = (role: Role) => {
@@ -360,22 +400,22 @@ const Settings: React.FC = () => {
     { id: 'warehouses', label: 'Kho bãi', icon: Building, roles: [Role.ADMIN] },
     { id: 'master-data', label: 'Dữ liệu gốc', icon: Database, roles: [Role.ADMIN] },
     { id: 'users', label: 'Người dùng', icon: Users, roles: [Role.ADMIN] },
-    { id: 'security', label: 'Bảo mật', icon: Shield },
+    { id: 'account', label: 'Tài khoản', icon: UserIcon },
     { id: 'maintenance', label: 'Bảo trì', icon: AlertCircle, roles: [Role.ADMIN] },
   ].filter(tab => !tab.roles || tab.roles.includes(currentUser.role));
 
   useEffect(() => {
-    // If current tab is not allowed, switch to security
+    // If current tab is not allowed, switch to account
     if (!tabs.find(t => t.id === activeTab)) {
-      setActiveTab('security');
+      setActiveTab('account');
     }
   }, [currentUser.role]);
 
   return (
     <div className="space-y-6">
-      <MasterDataConfirmModal 
-        {...confirmModal} 
-        onClose={() => setConfirmModal(p => ({ ...p, isOpen: false }))} 
+      <MasterDataConfirmModal
+        {...confirmModal}
+        onClose={() => setConfirmModal(p => ({ ...p, isOpen: false }))}
         onConfirm={() => { confirmModal.onConfirm(); setConfirmModal(p => ({ ...p, isOpen: false })); }}
       />
 
@@ -386,17 +426,13 @@ const Settings: React.FC = () => {
             <div className="bg-red-50 text-red-600 px-3 py-1 rounded-full text-[10px] font-black uppercase flex items-center border border-red-100">
               <AlertCircle size={12} className="mr-1" /> Lỗi kết nối Database
             </div>
-          ) : isSupabaseConfigured ? (
-            <div className="bg-emerald-50 text-emerald-600 px-3 py-1 rounded-full text-[10px] font-black uppercase flex items-center border border-emerald-100">
-              <Database size={12} className="mr-1" /> Đã kết nối Supabase
-            </div>
           ) : (
             <div className="bg-amber-50 text-amber-600 px-3 py-1 rounded-full text-[10px] font-black uppercase flex items-center border border-amber-100">
               <AlertCircle size={12} className="mr-1" /> Chế độ Offline (Local)
             </div>
           )}
           <div className="bg-blue-50 text-accent px-3 py-1 rounded-full text-[10px] font-black uppercase flex items-center border border-blue-100">
-             <AlertCircle size={12} className="mr-1" /> Toàn quyền Admin
+            <AlertCircle size={12} className="mr-1" /> Toàn quyền Admin
           </div>
         </div>
       </div>
@@ -410,8 +446,8 @@ const Settings: React.FC = () => {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={`w-full flex items-center px-4 py-3 rounded-xl text-sm font-bold transition-all
-                  ${activeTab === tab.id 
-                    ? 'bg-primary text-white shadow-lg shadow-slate-900/20' 
+                  ${activeTab === tab.id
+                    ? 'bg-primary text-white shadow-lg shadow-slate-900/20'
                     : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'
                   }`}
               >
@@ -426,45 +462,45 @@ const Settings: React.FC = () => {
         <div className="flex-1">
           {activeTab === 'general' && (
             <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-               <div className="p-6 border-b border-slate-100 bg-slate-50/50">
-                  <h2 className="text-lg font-bold text-slate-800">Thông tin ứng dụng</h2>
-                  <p className="text-xs text-slate-500 font-medium">Cấu hình nhận diện thương hiệu công ty.</p>
-               </div>
-               <form onSubmit={handleSaveGeneral} className="p-6 space-y-8">
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    <div className="space-y-6">
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center">Tên doanh nghiệp</label>
-                        <input 
-                          type="text" value={appName} onChange={(e) => setAppName(e.target.value)}
-                          className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-accent outline-none font-bold text-slate-700"
-                        />
-                      </div>
-                      <div className="space-y-4">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Logo công ty</label>
-                        <div className="flex items-center gap-3">
-                           <button type="button" onClick={() => fileInputRef.current?.click()} className="flex-1 px-4 py-3 bg-white border border-slate-200 rounded-xl font-bold text-slate-700 hover:bg-slate-50 transition flex items-center justify-center gap-2">
-                             <Upload size={18} /> Tải logo mới
-                           </button>
-                           <input type="file" ref={fileInputRef} onChange={handleLogoUpload} accept="image/*" className="hidden" />
-                           {appLogo && (
-                             <button type="button" onClick={() => setAppLogo('')} className="p-3 bg-red-50 text-red-600 rounded-xl border border-red-100 hover:bg-red-600 hover:text-white transition shadow-sm"><Trash size={18} /></button>
-                           )}
-                        </div>
+              <div className="p-6 border-b border-slate-100 bg-slate-50/50">
+                <h2 className="text-lg font-bold text-slate-800">Thông tin ứng dụng</h2>
+                <p className="text-xs text-slate-500 font-medium">Cấu hình nhận diện thương hiệu công ty.</p>
+              </div>
+              <form onSubmit={handleSaveGeneral} className="p-6 space-y-8">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                  <div className="space-y-6">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center">Tên doanh nghiệp</label>
+                      <input
+                        type="text" value={appName} onChange={(e) => setAppName(e.target.value)}
+                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-accent outline-none font-bold text-slate-700"
+                      />
+                    </div>
+                    <div className="space-y-4">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Logo công ty</label>
+                      <div className="flex items-center gap-3">
+                        <button type="button" onClick={() => fileInputRef.current?.click()} className="flex-1 px-4 py-3 bg-white border border-slate-200 rounded-xl font-bold text-slate-700 hover:bg-slate-50 transition flex items-center justify-center gap-2">
+                          <Upload size={18} /> Tải logo mới
+                        </button>
+                        <input type="file" ref={fileInputRef} onChange={handleLogoUpload} accept="image/*" className="hidden" />
+                        {appLogo && (
+                          <button type="button" onClick={() => setAppLogo('')} className="p-3 bg-red-50 text-red-600 rounded-xl border border-red-100 hover:bg-red-600 hover:text-white transition shadow-sm"><Trash size={18} /></button>
+                        )}
                       </div>
                     </div>
-                    <div className="space-y-4 bg-primary/5 p-6 rounded-2xl border border-dashed border-slate-200">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-center block">Xem trước thương hiệu</label>
-                        <div className="bg-primary p-6 rounded-xl flex items-center gap-4 shadow-xl">
-                           {appLogo ? <img src={appLogo} alt="" className="w-10 h-10 object-contain rounded" /> : <div className="w-10 h-10 bg-accent rounded flex items-center justify-center font-bold text-white">KV</div>}
-                           <span className="text-white text-xl font-black">{appName}</span>
-                        </div>
+                  </div>
+                  <div className="space-y-4 bg-primary/5 p-6 rounded-2xl border border-dashed border-slate-200">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-center block">Xem trước thương hiệu</label>
+                    <div className="bg-primary p-6 rounded-xl flex items-center gap-4 shadow-xl">
+                      {appLogo ? <img src={appLogo} alt="" className="w-10 h-10 object-contain rounded" /> : <div className="w-10 h-10 bg-accent rounded flex items-center justify-center font-bold text-white">KV</div>}
+                      <span className="text-white text-xl font-black">{appName}</span>
                     </div>
                   </div>
-                  <div className="pt-4 border-t border-slate-100 flex justify-end">
-                    <button type="submit" className="px-8 py-3 bg-accent text-white rounded-xl font-bold hover:bg-blue-700 transition shadow-lg shadow-blue-500/20 flex items-center"><Save size={18} className="mr-2" /> Lưu cấu hình</button>
-                  </div>
-               </form>
+                </div>
+                <div className="pt-4 border-t border-slate-100 flex justify-end">
+                  <button type="submit" className="px-8 py-3 bg-accent text-white rounded-xl font-bold hover:bg-blue-700 transition shadow-lg shadow-blue-500/20 flex items-center"><Save size={18} className="mr-2" /> Lưu cấu hình</button>
+                </div>
+              </form>
             </div>
           )}
 
@@ -475,14 +511,14 @@ const Settings: React.FC = () => {
                   <h2 className="text-lg font-bold text-slate-800">Danh mục Kho bãi</h2>
                   <p className="text-xs text-slate-500 font-medium">Hệ thống quản lý địa điểm lưu trữ.</p>
                 </div>
-                <button 
+                <button
                   onClick={() => {
                     setEditingWarehouse(null);
                     setNewWhName('');
                     setNewWhAddress('');
                     setNewWhType('SITE');
                     setIsWhModalOpen(true);
-                  }} 
+                  }}
                   className="flex items-center px-4 py-2 bg-slate-800 text-white rounded-xl hover:bg-slate-700 transition font-bold text-xs"
                 >
                   <Plus className="w-4 h-4 mr-2" /> Thêm kho
@@ -510,15 +546,15 @@ const Settings: React.FC = () => {
                     <div className="flex items-start text-slate-400 text-[11px] leading-relaxed mb-4">
                       <MapPin className="w-3 h-3 mr-1 mt-0.5" />{wh.address}
                     </div>
-                    
+
                     <div className="flex gap-2 pt-3 border-t border-slate-50 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button 
+                      <button
                         onClick={() => handleEditWarehouse(wh)}
                         className="flex-1 py-2 bg-slate-50 text-slate-600 rounded-lg text-[10px] font-bold hover:bg-blue-50 hover:text-accent transition-colors flex items-center justify-center"
                       >
                         <Edit2 size={12} className="mr-1" /> Chỉnh sửa
                       </button>
-                      <button 
+                      <button
                         onClick={() => handleDeleteWarehouse(wh)}
                         className="flex-1 py-2 bg-slate-50 text-slate-600 rounded-lg text-[10px] font-bold hover:bg-red-50 hover:text-red-600 transition-colors flex items-center justify-center"
                       >
@@ -535,7 +571,7 @@ const Settings: React.FC = () => {
             <div className="animate-in slide-in-from-right-4 duration-300">
               {!activeMasterSection ? (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <button 
+                  <button
                     onClick={() => setActiveMasterSection('categories')}
                     className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm hover:shadow-xl hover:border-accent/20 transition-all group text-left"
                   >
@@ -549,7 +585,7 @@ const Settings: React.FC = () => {
                     </div>
                   </button>
 
-                  <button 
+                  <button
                     onClick={() => setActiveMasterSection('units')}
                     className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm hover:shadow-xl hover:border-accent/20 transition-all group text-left"
                   >
@@ -563,7 +599,7 @@ const Settings: React.FC = () => {
                     </div>
                   </button>
 
-                  <button 
+                  <button
                     onClick={() => setActiveMasterSection('suppliers')}
                     className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm hover:shadow-xl hover:border-accent/20 transition-all group text-left"
                   >
@@ -581,7 +617,7 @@ const Settings: React.FC = () => {
                 <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden flex flex-col min-h-[600px]">
                   <div className="p-6 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                      <button 
+                      <button
                         onClick={() => {
                           setActiveMasterSection(null);
                           setEditingItem(null);
@@ -608,14 +644,14 @@ const Settings: React.FC = () => {
                     {activeMasterSection === 'categories' && (
                       <div className="max-w-2xl mx-auto space-y-6">
                         <div className="flex gap-3">
-                          <input 
+                          <input
                             type="text" placeholder="Nhập tên danh mục mới..." value={newCatName}
                             onChange={(e) => setNewCatName(e.target.value)}
                             onKeyDown={(e) => e.key === 'Enter' && handleAddCat()}
                             className="flex-1 bg-slate-50 border border-slate-200 rounded-2xl px-6 py-4 text-sm font-bold outline-none focus:ring-2 focus:ring-accent transition-all"
                           />
                           {editingItem?.type === 'cat' && (
-                            <button 
+                            <button
                               onClick={() => { setEditingItem(null); setNewCatName(''); }}
                               className="px-6 py-4 border border-slate-200 text-slate-500 rounded-2xl font-bold text-xs uppercase hover:bg-slate-50 transition-all"
                             >
@@ -623,7 +659,7 @@ const Settings: React.FC = () => {
                             </button>
                           )}
                           <button onClick={handleAddCat} className="bg-accent text-white px-8 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-blue-700 transition shadow-lg shadow-blue-500/20 flex items-center gap-2">
-                            {editingItem?.type === 'cat' ? <Save size={18}/> : <Plus size={18}/>}
+                            {editingItem?.type === 'cat' ? <Save size={18} /> : <Plus size={18} />}
                             {editingItem?.type === 'cat' ? 'Cập nhật' : 'Thêm mới'}
                           </button>
                         </div>
@@ -638,8 +674,8 @@ const Settings: React.FC = () => {
                                 <span className="text-sm font-bold text-slate-700">{cat.name}</span>
                               </div>
                               <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button onClick={() => handleEditCat(cat)} className="p-2 text-slate-400 hover:text-accent hover:bg-blue-50 rounded-xl transition-colors"><Edit2 size={16}/></button>
-                                <button onClick={() => handleDeleteCat(cat)} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors"><Trash2 size={16}/></button>
+                                <button onClick={() => handleEditCat(cat)} className="p-2 text-slate-400 hover:text-accent hover:bg-blue-50 rounded-xl transition-colors"><Edit2 size={16} /></button>
+                                <button onClick={() => handleDeleteCat(cat)} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors"><Trash2 size={16} /></button>
                               </div>
                             </div>
                           ))}
@@ -650,14 +686,14 @@ const Settings: React.FC = () => {
                     {activeMasterSection === 'units' && (
                       <div className="max-w-2xl mx-auto space-y-6">
                         <div className="flex gap-3">
-                          <input 
+                          <input
                             type="text" placeholder="Nhập đơn vị tính mới (kg, bao, cái...)" value={newUnitName}
                             onChange={(e) => setNewUnitName(e.target.value)}
                             onKeyDown={(e) => e.key === 'Enter' && handleAddUnit()}
                             className="flex-1 bg-slate-50 border border-slate-200 rounded-2xl px-6 py-4 text-sm font-bold outline-none focus:ring-2 focus:ring-accent transition-all"
                           />
                           {editingItem?.type === 'unit' && (
-                            <button 
+                            <button
                               onClick={() => { setEditingItem(null); setNewUnitName(''); }}
                               className="px-6 py-4 border border-slate-200 text-slate-500 rounded-2xl font-bold text-xs uppercase hover:bg-slate-50 transition-all"
                             >
@@ -665,7 +701,7 @@ const Settings: React.FC = () => {
                             </button>
                           )}
                           <button onClick={handleAddUnit} className="bg-emerald-600 text-white px-8 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-emerald-700 transition shadow-lg shadow-emerald-500/20 flex items-center gap-2">
-                            {editingItem?.type === 'unit' ? <Save size={18}/> : <Plus size={18}/>}
+                            {editingItem?.type === 'unit' ? <Save size={18} /> : <Plus size={18} />}
                             {editingItem?.type === 'unit' ? 'Cập nhật' : 'Thêm mới'}
                           </button>
                         </div>
@@ -680,8 +716,8 @@ const Settings: React.FC = () => {
                                 <span className="text-sm font-bold text-slate-700">Đơn vị: {unit.name}</span>
                               </div>
                               <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button onClick={() => handleEditUnit(unit)} className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition-colors"><Edit2 size={16}/></button>
-                                <button onClick={() => handleDeleteUnit(unit)} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors"><Trash2 size={16}/></button>
+                                <button onClick={() => handleEditUnit(unit)} className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition-colors"><Edit2 size={16} /></button>
+                                <button onClick={() => handleDeleteUnit(unit)} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors"><Trash2 size={16} /></button>
                               </div>
                             </div>
                           ))}
@@ -696,24 +732,24 @@ const Settings: React.FC = () => {
                             {editingItem?.type === 'sup' ? 'Cập nhật nhà cung cấp' : 'Thêm nhà cung cấp mới'}
                           </h3>
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <input 
-                              type="text" placeholder="Tên đối tác..." 
+                            <input
+                              type="text" placeholder="Tên đối tác..."
                               className="bg-white border border-slate-200 rounded-2xl px-4 py-3 text-sm font-bold outline-none focus:ring-2 focus:ring-accent"
-                              value={newSup.name} onChange={(e) => setNewSup({...newSup, name: e.target.value})}
+                              value={newSup.name} onChange={(e) => setNewSup({ ...newSup, name: e.target.value })}
                             />
-                            <input 
-                              type="text" placeholder="Người liên hệ..." 
+                            <input
+                              type="text" placeholder="Người liên hệ..."
                               className="bg-white border border-slate-200 rounded-2xl px-4 py-3 text-sm font-bold outline-none focus:ring-2 focus:ring-accent"
-                              value={newSup.contact} onChange={(e) => setNewSup({...newSup, contact: e.target.value})}
+                              value={newSup.contact} onChange={(e) => setNewSup({ ...newSup, contact: e.target.value })}
                             />
                             <div className="flex gap-2">
-                              <input 
-                                type="text" placeholder="Số điện thoại..." 
+                              <input
+                                type="text" placeholder="Số điện thoại..."
                                 className="flex-1 bg-white border border-slate-200 rounded-2xl px-4 py-3 text-sm font-bold outline-none focus:ring-2 focus:ring-accent"
-                                value={newSup.phone} onChange={(e) => setNewSup({...newSup, phone: e.target.value})}
+                                value={newSup.phone} onChange={(e) => setNewSup({ ...newSup, phone: e.target.value })}
                               />
                               {editingItem?.type === 'sup' && (
-                                <button 
+                                <button
                                   onClick={() => { setEditingItem(null); setNewSup({ name: '', contact: '', phone: '' }); }}
                                   className="px-4 bg-white border border-slate-200 text-slate-500 rounded-2xl font-bold text-xs uppercase hover:bg-slate-50 transition-all"
                                 >
@@ -739,15 +775,15 @@ const Settings: React.FC = () => {
                                     <p className="text-lg font-black text-slate-800 mb-1">{sup.name}</p>
                                     <div className="flex flex-col gap-1">
                                       <p className="text-xs text-slate-400 flex items-center font-bold uppercase tracking-tight">
-                                        <UserIcon size={12} className="mr-1 text-slate-300"/> {sup.contactPerson || 'N/A'}
+                                        <UserIcon size={12} className="mr-1 text-slate-300" /> {sup.contactPerson || 'N/A'}
                                       </p>
                                       <p className="text-xs text-amber-600 font-black tracking-widest">{sup.phone}</p>
                                     </div>
                                   </div>
                                 </div>
                                 <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <button onClick={() => handleEditSup(sup)} className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-xl transition-colors"><Edit2 size={16}/></button>
-                                  <button onClick={() => handleDeleteSup(sup)} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors"><Trash2 size={16}/></button>
+                                  <button onClick={() => handleEditSup(sup)} className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-xl transition-colors"><Edit2 size={16} /></button>
+                                  <button onClick={() => handleDeleteSup(sup)} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors"><Trash2 size={16} /></button>
                                 </div>
                               </div>
                             </div>
@@ -768,7 +804,7 @@ const Settings: React.FC = () => {
                   <h2 className="text-lg font-bold text-slate-800">Quản lý nhân sự</h2>
                   <p className="text-xs text-slate-500 font-medium">Phân quyền và phạm vi quản lý kho bãi cho nhân viên.</p>
                 </div>
-                <button 
+                <button
                   onClick={handleAddUser}
                   className="flex items-center px-4 py-2 bg-slate-800 text-white rounded-xl hover:bg-slate-700 transition font-bold text-xs shadow-lg shadow-slate-900/20"
                 >
@@ -781,66 +817,66 @@ const Settings: React.FC = () => {
                   const assignedWarehouse = warehouses.find(w => w.id === u.assignedWarehouseId);
                   return (
                     <div key={u.id} className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden group hover:border-accent/30 transition-all">
-                       <div className="p-6">
-                          <div className="flex justify-between items-start mb-4">
-                             <div className="relative">
-                                <img src={u.avatar} alt={u.name} className="w-14 h-14 rounded-full border-4 border-slate-50" />
-                                <div className="absolute -bottom-1 -right-1 bg-white p-1 rounded-full shadow-sm">
-                                   <Shield size={12} className={`text-accent ${u.role === Role.ADMIN ? 'text-red-500' : 'text-blue-500'}`} />
-                                </div>
-                             </div>
-                             <div className="flex items-center gap-2">
-                                {u.id === currentUser.id && <span className="text-[9px] font-black text-accent bg-blue-50 px-2 py-0.5 rounded-lg border border-blue-100">BẠN</span>}
-                                <button className="text-slate-300 hover:text-slate-600">
-                                   <MoreVertical size={18} />
-                                </button>
-                             </div>
+                      <div className="p-6">
+                        <div className="flex justify-between items-start mb-4">
+                          <div className="relative">
+                            <img src={u.avatar} alt={u.name} className="w-14 h-14 rounded-full border-4 border-slate-50" />
+                            <div className="absolute -bottom-1 -right-1 bg-white p-1 rounded-full shadow-sm">
+                              <Shield size={12} className={`text-accent ${u.role === Role.ADMIN ? 'text-red-500' : 'text-blue-500'}`} />
+                            </div>
                           </div>
-                          
-                          <h3 className="font-black text-slate-800 mb-1">{u.name}</h3>
-                          <div className="space-y-1 mb-4">
-                             <div className="flex items-center text-[11px] text-slate-500 font-medium">
-                                <Mail size={12} className="mr-2 shrink-0 text-slate-300" /> {u.email}
-                             </div>
-                             {u.phone && (
-                                <div className="flex items-center text-[11px] text-slate-500 font-medium">
-                                   <Phone size={12} className="mr-2 shrink-0 text-slate-300" /> {u.phone}
-                                </div>
-                             )}
+                          <div className="flex items-center gap-2">
+                            {u.id === currentUser.id && <span className="text-[9px] font-black text-accent bg-blue-50 px-2 py-0.5 rounded-lg border border-blue-100">BẠN</span>}
+                            <button className="text-slate-300 hover:text-slate-600">
+                              <MoreVertical size={18} />
+                            </button>
                           </div>
-                          
-                          <div className="mb-4">
-                             {getRoleBadge(u.role)}
+                        </div>
+
+                        <h3 className="font-black text-slate-800 mb-1">{u.name}</h3>
+                        <div className="space-y-1 mb-4">
+                          <div className="flex items-center text-[11px] text-slate-500 font-medium">
+                            <Mail size={12} className="mr-2 shrink-0 text-slate-300" /> {u.email}
                           </div>
-                          
-                          <div className="pt-4 border-t border-slate-50 space-y-2">
-                             <div className="flex items-center text-[10px] text-slate-400 uppercase font-black tracking-widest">
-                                <MapPin size={12} className="mr-1" /> Phạm vi quản lý
-                             </div>
-                             <div className="font-bold text-xs text-slate-700">
-                                {assignedWarehouse ? assignedWarehouse.name : 'Toàn hệ thống'}
-                             </div>
+                          {u.phone && (
+                            <div className="flex items-center text-[11px] text-slate-500 font-medium">
+                              <Phone size={12} className="mr-2 shrink-0 text-slate-300" /> {u.phone}
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="mb-4">
+                          {getRoleBadge(u.role)}
+                        </div>
+
+                        <div className="pt-4 border-t border-slate-50 space-y-2">
+                          <div className="flex items-center text-[10px] text-slate-400 uppercase font-black tracking-widest">
+                            <MapPin size={12} className="mr-1" /> Phạm vi quản lý
                           </div>
-                       </div>
-                       
-                       <div className="px-6 py-3 bg-slate-50/50 flex gap-2 border-t border-slate-50">
-                          <button 
-                            onClick={() => handleEditUser(u)}
-                            className="flex-1 py-2 text-[10px] font-black uppercase tracking-widest text-accent bg-white border border-slate-200 rounded-xl hover:bg-accent hover:text-white transition-all shadow-sm"
-                          >
-                             Sửa
-                          </button>
-                          <button 
-                            onClick={() => handleDeleteUserClick(u)}
-                            className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all shadow-sm border
-                              ${u.id === currentUser.id 
-                                ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed' 
-                                : 'bg-white text-red-600 border-red-100 hover:bg-red-600 hover:text-white'
-                              }`}
-                          >
-                             Xoá
-                          </button>
-                       </div>
+                          <div className="font-bold text-xs text-slate-700">
+                            {assignedWarehouse ? assignedWarehouse.name : 'Toàn hệ thống'}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="px-6 py-3 bg-slate-50/50 flex gap-2 border-t border-slate-50">
+                        <button
+                          onClick={() => handleEditUser(u)}
+                          className="flex-1 py-2 text-[10px] font-black uppercase tracking-widest text-accent bg-white border border-slate-200 rounded-xl hover:bg-accent hover:text-white transition-all shadow-sm"
+                        >
+                          Sửa
+                        </button>
+                        <button
+                          onClick={() => handleDeleteUserClick(u)}
+                          className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all shadow-sm border
+                              ${u.id === currentUser.id
+                              ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed'
+                              : 'bg-white text-red-600 border-red-100 hover:bg-red-600 hover:text-white'
+                            }`}
+                        >
+                          Xoá
+                        </button>
+                      </div>
                     </div>
                   );
                 })}
@@ -848,134 +884,151 @@ const Settings: React.FC = () => {
             </div>
           )}
 
-          {activeTab === 'security' && (
+          {activeTab === 'account' && (
             <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-               <div className="p-6 border-b border-slate-100 bg-slate-50/50">
-                  <h2 className="text-lg font-bold text-slate-800">Bảo mật tài khoản</h2>
-                  <p className="text-xs text-slate-500 font-medium">Thay đổi mật khẩu và quản lý đăng nhập.</p>
-               </div>
-               <div className="p-6 space-y-8">
-                  <form onSubmit={handleChangePassword} className="max-w-md space-y-4">
-                    {passError && (
-                      <div className="bg-red-50 border border-red-100 p-4 rounded-xl flex items-center gap-3 text-red-600">
-                        <AlertCircle size={18} />
-                        <p className="text-xs font-bold">{passError}</p>
-                      </div>
-                    )}
-                    {passSuccess && (
-                      <div className="bg-green-50 border border-green-100 p-4 rounded-xl flex items-center gap-3 text-green-600">
-                        <Save size={18} />
-                        <p className="text-xs font-bold">{passSuccess}</p>
-                      </div>
-                    )}
-
+              <div className="p-6 border-b border-slate-100 bg-slate-50/50">
+                <h2 className="text-lg font-bold text-slate-800">Tài khoản cá nhân</h2>
+                <p className="text-xs text-slate-500 font-medium">Thay đổi thông tin, ảnh đại diện và mật khẩu.</p>
+              </div>
+              <div className="p-6 space-y-8">
+                {/* Avatar Section */}
+                <div>
+                  <h3 className="text-sm font-bold text-slate-800 mb-4">Ảnh đại diện</h3>
+                  <div className="flex items-center gap-6">
+                    <img src={currentUser.avatar} alt="Avatar" className="w-20 h-20 rounded-full border-4 border-slate-50 shadow-sm object-cover" />
                     <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Mật khẩu hiện tại</label>
-                      <input 
-                        type="password" 
-                        required
-                        value={passwords.current}
-                        onChange={(e) => setPasswords({...passwords, current: e.target.value})}
-                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-accent font-medium"
-                      />
+                      <button onClick={() => avatarInputRef.current?.click()} className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 transition shadow-sm flex items-center">
+                        <Upload size={14} className="mr-2" /> Tải ảnh lên
+                      </button>
+                      <input type="file" ref={avatarInputRef} onChange={handleAvatarUpload} accept="image/*" className="hidden" />
+                      <p className="text-[10px] text-slate-400">Định dạng hỗ trợ: JPG, PNG. Ảnh sẽ được tự động cắt theo hình vuông.</p>
                     </div>
-
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Mật khẩu mới</label>
-                      <input 
-                        type="password" 
-                        required
-                        value={passwords.new}
-                        onChange={(e) => setPasswords({...passwords, new: e.target.value})}
-                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-accent font-medium"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Xác nhận mật khẩu mới</label>
-                      <input 
-                        type="password" 
-                        required
-                        value={passwords.confirm}
-                        onChange={(e) => setPasswords({...passwords, confirm: e.target.value})}
-                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-accent font-medium"
-                      />
-                    </div>
-
-                    <button 
-                      type="submit"
-                      className="px-6 py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition shadow-lg"
-                    >
-                      Cập nhật mật khẩu
-                    </button>
-                  </form>
-
-                  <div className="pt-8 border-t border-slate-100">
-                    <h3 className="text-sm font-bold text-slate-800 mb-2">Đăng xuất</h3>
-                    <p className="text-xs text-slate-500 mb-4">Kết thúc phiên làm việc hiện tại trên thiết bị này.</p>
-                    <button 
-                      onClick={() => {
-                        logout();
-                        window.location.href = '/login';
-                      }}
-                      className="px-6 py-3 bg-red-50 text-red-600 border border-red-100 rounded-xl font-bold hover:bg-red-600 hover:text-white transition"
-                    >
-                      Đăng xuất ngay
-                    </button>
                   </div>
-               </div>
+                </div>
+
+                {/* Password Section */}
+                <h3 className="text-sm font-bold text-slate-800 mb-4">Đổi mật khẩu</h3>
+                <form onSubmit={handleChangePassword} className="max-w-md space-y-4">
+                  {passError && (
+                    <div className="bg-red-50 border border-red-100 p-4 rounded-xl flex items-center gap-3 text-red-600">
+                      <AlertCircle size={18} />
+                      <p className="text-xs font-bold">{passError}</p>
+                    </div>
+                  )}
+                  {passSuccess && (
+                    <div className="bg-green-50 border border-green-100 p-4 rounded-xl flex items-center gap-3 text-green-600">
+                      <Save size={18} />
+                      <p className="text-xs font-bold">{passSuccess}</p>
+                    </div>
+                  )}
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Mật khẩu hiện tại</label>
+                    <input
+                      type="password"
+                      required
+                      value={passwords.current}
+                      onChange={(e) => setPasswords({ ...passwords, current: e.target.value })}
+                      className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-accent font-medium"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Mật khẩu mới</label>
+                    <input
+                      type="password"
+                      required
+                      value={passwords.new}
+                      onChange={(e) => setPasswords({ ...passwords, new: e.target.value })}
+                      className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-accent font-medium"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Xác nhận mật khẩu mới</label>
+                    <input
+                      type="password"
+                      required
+                      value={passwords.confirm}
+                      onChange={(e) => setPasswords({ ...passwords, confirm: e.target.value })}
+                      className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-accent font-medium"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    className="px-6 py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition shadow-lg"
+                  >
+                    Cập nhật mật khẩu
+                  </button>
+                </form>
+
+                <div className="pt-8 border-t border-slate-100">
+                  <h3 className="text-sm font-bold text-slate-800 mb-2">Đăng xuất</h3>
+                  <p className="text-xs text-slate-500 mb-4">Kết thúc phiên làm việc hiện tại trên thiết bị này.</p>
+                  <button
+                    onClick={() => {
+                      logout();
+                      window.location.href = '/login';
+                    }}
+                    className="px-6 py-3 bg-red-50 text-red-600 border border-red-100 rounded-xl font-bold hover:bg-red-600 hover:text-white transition"
+                  >
+                    Đăng xuất ngay
+                  </button>
+                </div>
+              </div>
             </div>
           )}
 
           {activeTab === 'maintenance' && (
             <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-               <div className="p-6 border-b border-slate-100 bg-red-50/30">
-                  <h2 className="text-lg font-bold text-red-800 flex items-center">
-                    <AlertCircle size={20} className="mr-2" /> Khu vực nguy hiểm
-                  </h2>
-                  <p className="text-xs text-red-500 font-medium">Các thao tác tại đây không thể hoàn tác. Hãy cẩn trọng.</p>
-               </div>
-               <div className="p-8 space-y-8">
-                  <div className="flex flex-col md:flex-row items-center justify-between gap-6 p-6 rounded-2xl border border-red-100 bg-red-50/10">
-                    <div className="space-y-1 text-center md:text-left">
-                      <h3 className="text-sm font-black text-slate-800 uppercase tracking-tight">Xóa toàn bộ dữ liệu vật tư & giao dịch</h3>
-                      <p className="text-xs text-slate-500 max-w-md">Xóa sạch danh sách vật tư, lịch sử nhập/xuất kho, yêu cầu vật tư và nhật ký hoạt động. Danh mục kho bãi và người dùng sẽ được giữ lại.</p>
-                    </div>
-                    <button 
-                      onClick={() => {
-                        triggerAction(
-                          "Xác nhận XÓA SẠCH dữ liệu",
-                          "Hành động này sẽ xóa toàn bộ vật tư và lịch sử giao dịch. Bạn sẽ không thể khôi phục lại dữ liệu này.",
-                          'danger',
-                          'XÓA VĨNH VIỄN',
-                          () => {
-                            clearAllData();
-                            alert("Đã xóa sạch dữ liệu vật tư và giao dịch.");
-                          },
-                          true // countdown
-                        );
-                      }}
-                      className="px-6 py-3 bg-red-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-red-700 transition shadow-lg shadow-red-500/20 flex items-center gap-2"
-                    >
-                      <Trash2 size={16} /> Xóa dữ liệu
-                    </button>
+              <div className="p-6 border-b border-slate-100 bg-red-50/30">
+                <h2 className="text-lg font-bold text-red-800 flex items-center">
+                  <AlertCircle size={20} className="mr-2" /> Khu vực nguy hiểm
+                </h2>
+                <p className="text-xs text-red-500 font-medium">Các thao tác tại đây không thể hoàn tác. Hãy cẩn trọng.</p>
+              </div>
+              <div className="p-8 space-y-8">
+                <div className="flex flex-col md:flex-row items-center justify-between gap-6 p-6 rounded-2xl border border-red-100 bg-red-50/10">
+                  <div className="space-y-1 text-center md:text-left">
+                    <h3 className="text-sm font-black text-slate-800 uppercase tracking-tight">Xóa toàn bộ dữ liệu vật tư & giao dịch</h3>
+                    <p className="text-xs text-slate-500 max-w-md">Xóa sạch danh sách vật tư, lịch sử nhập/xuất kho, yêu cầu vật tư và nhật ký hoạt động. Danh mục kho bãi và người dùng sẽ được giữ lại.</p>
                   </div>
-               </div>
+                  <button
+                    onClick={() => {
+                      triggerAction(
+                        "Xác nhận XÓA SẠCH dữ liệu",
+                        "Hành động này sẽ xóa toàn bộ vật tư và lịch sử giao dịch. Bạn sẽ không thể khôi phục lại dữ liệu này.",
+                        'danger',
+                        'XÓA VĨNH VIỄN',
+                        () => {
+                          clearAllData();
+                          alert("Đã xóa sạch dữ liệu vật tư và giao dịch.");
+                        },
+                        true // countdown
+                      );
+                    }}
+                    className="px-6 py-3 bg-red-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-red-700 transition shadow-lg shadow-red-500/20 flex items-center gap-2"
+                  >
+                    <Trash2 size={16} /> Xóa dữ liệu
+                  </button>
+                </div>
+              </div>
             </div>
           )}
         </div>
       </div>
 
       {/* Warehouse Add/Edit Modal */}
-      <UserModal 
-        isOpen={isUserModalOpen} 
-        onClose={() => setIsUserModalOpen(false)} 
+      <UserModal
+        isOpen={isUserModalOpen}
+        onClose={() => setIsUserModalOpen(false)}
         onSave={handleSaveUser}
         userToEdit={editingUser}
         warehouses={warehouses}
       />
 
-      <DeleteUserModal 
+      <DeleteUserModal
         isOpen={isUserDeleteModalOpen}
         onClose={() => setIsUserDeleteModalOpen(false)}
         onConfirm={handleConfirmDeleteUser}

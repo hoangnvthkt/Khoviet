@@ -1,15 +1,15 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
-import { 
-  InventoryItem, Transaction, User, Warehouse, Supplier, 
-  Role, TransactionStatus, TransactionType, MaterialRequest, 
+import {
+  InventoryItem, Transaction, User, Warehouse, Supplier,
+  Role, TransactionStatus, TransactionType, MaterialRequest,
   RequestStatus, AuditLog, GlobalActivity, ActivityType,
   ItemCategory, ItemUnit
 } from '../types';
-import { 
-  MOCK_USERS, MOCK_WAREHOUSES, MOCK_ITEMS, 
-  MOCK_SUPPLIERS, MOCK_TRANSACTIONS 
+import {
+  MOCK_USERS, MOCK_WAREHOUSES, MOCK_ITEMS,
+  MOCK_SUPPLIERS, MOCK_TRANSACTIONS
 } from '../constants';
 
 interface AppSettings {
@@ -47,7 +47,7 @@ interface AppContextType {
   updateWarehouse: (warehouse: Warehouse) => void;
   removeWarehouse: (warehouseId: string) => void;
   addRequest: (request: MaterialRequest) => void;
-  updateRequestStatus: (id: string, status: RequestStatus, note?: string, approvedItems?: {itemId: string, qty: number}[], sourceWarehouseId?: string) => void;
+  updateRequestStatus: (id: string, status: RequestStatus, note?: string, approvedItems?: { itemId: string, qty: number }[], sourceWarehouseId?: string) => void;
   logActivity: (type: ActivityType, action: string, description: string, status?: GlobalActivity['status'], warehouseId?: string) => void;
   addCategory: (name: string) => void;
   updateCategory: (category: ItemCategory) => void;
@@ -73,12 +73,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const saved = localStorage.getItem('khoviet_user');
     return saved ? JSON.parse(saved) : MOCK_USERS[0];
   });
-  const [users, setUsers] = useState<User[]>(isSupabaseConfigured ? [] : MOCK_USERS);
+  const [users, setUsers] = useState<User[]>(MOCK_USERS);
   const [appSettings, setAppSettings] = useState<AppSettings>({ name: 'KhoViet', logo: '' });
-  const [items, setItems] = useState<InventoryItem[]>(isSupabaseConfigured ? [] : MOCK_ITEMS);
+  const [items, setItems] = useState<InventoryItem[]>(MOCK_ITEMS);
   const [warehouses, setWarehouses] = useState<Warehouse[]>(MOCK_WAREHOUSES);
-  const [suppliers, setSuppliers] = useState<Supplier[]>(isSupabaseConfigured ? [] : MOCK_SUPPLIERS);
-  const [transactions, setTransactions] = useState<Transaction[]>(isSupabaseConfigured ? [] : MOCK_TRANSACTIONS);
+  const [suppliers, setSuppliers] = useState<Supplier[]>(MOCK_SUPPLIERS);
+  const [transactions, setTransactions] = useState<Transaction[]>(MOCK_TRANSACTIONS);
   const [requests, setRequests] = useState<MaterialRequest[]>([]);
   const [activities, setActivities] = useState<GlobalActivity[]>([]);
   const [categories, setCategories] = useState<ItemCategory[]>([
@@ -92,7 +92,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     { id: 'u3', name: 'Cái' },
     { id: 'u4', name: 'Mét' }
   ]);
-  
+
   const [isLoading, setIsLoading] = useState(isSupabaseConfigured);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
@@ -107,8 +107,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const fetchData = async () => {
       try {
         setIsLoading(true);
-        
-        // Fetch each table individually to handle missing tables gracefully
+
         const fetchTable = async (table: string, query: any = supabase.from(table).select('*')) => {
           try {
             const { data, error } = await query;
@@ -124,22 +123,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         };
 
         const [
-          itemsData,
-          whData,
-          supData,
-          txData,
-          reqData,
-          actData,
-          catData,
-          unitData,
-          settingsData,
-          usersData
+          itemsData, whData, supData, txData, reqData, actData, catData, unitData, settingsData, usersData
         ] = await Promise.all([
           fetchTable('items'),
           fetchTable('warehouses'),
           fetchTable('suppliers'),
           fetchTable('transactions', supabase.from('transactions').select('*').order('date', { ascending: false })),
-          fetchTable('requests', supabase.from('requests').select('*').order('createdDate', { ascending: false })),
+          fetchTable('requests', supabase.from('requests').select('*').order('created_date', { ascending: false })),
           fetchTable('activities', supabase.from('activities').select('*').order('timestamp', { ascending: false }).limit(50)),
           fetchTable('categories'),
           fetchTable('units'),
@@ -148,64 +138,31 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         ]);
 
         if (usersData && usersData.length > 0) {
-          const mappedUsers = usersData.map((u: any) => ({
-            ...u,
-            assignedWarehouseId: u.assigned_warehouse_id
-          }));
+          const mappedUsers = usersData.map((u: any) => ({ ...u, assignedWarehouseId: u.assigned_warehouse_id }));
           setUsers(mappedUsers);
-          // Update current user if found in the list
           const currentInList = mappedUsers.find((u: any) => u.email === user.email);
           if (currentInList) setUser(currentInList);
         }
 
         if (itemsData) setItems(itemsData.map((i: any) => ({
-          ...i,
-          priceIn: i.price_in,
-          priceOut: i.price_out,
-          minStock: i.min_stock,
-          supplierId: i.supplier_id,
-          imageUrl: i.image_url,
-          stockByWarehouse: i.stock_by_warehouse
+          ...i, priceIn: i.price_in, priceOut: i.price_out, minStock: i.min_stock, supplierId: i.supplier_id, imageUrl: i.image_url, stockByWarehouse: i.stock_by_warehouse
         })));
-        
-        if (whData && whData.length > 0) setWarehouses(whData.map((w: any) => ({
-          ...w,
-          isArchived: w.is_archived
-        })));
-        
-        if (supData) setSuppliers(supData.map((s: any) => ({
-          ...s,
-          contactPerson: s.contact_person
-        })));
-        
+
+        if (whData && whData.length > 0) setWarehouses(whData.map((w: any) => ({ ...w, isArchived: w.is_archived })));
+        if (supData) setSuppliers(supData.map((s: any) => ({ ...s, contactPerson: s.contact_person })));
+
         if (txData) setTransactions(txData.map((t: any) => ({
-          ...t,
-          sourceWarehouseId: t.source_warehouse_id,
-          targetWarehouseId: t.target_warehouse_id,
-          supplierId: t.supplier_id,
-          requesterId: t.requester_id,
-          approverId: t.approver_id,
-          relatedRequestId: t.related_request_id,
-          pendingItems: t.pending_items
+          ...t, sourceWarehouseId: t.source_warehouse_id, targetWarehouseId: t.target_warehouse_id, supplierId: t.supplier_id, requesterId: t.requester_id, approverId: t.approver_id, relatedRequestId: t.related_request_id, pendingItems: t.pending_items
         })));
-        
+
         if (reqData) setRequests(reqData.map((r: any) => ({
-          ...r,
-          siteWarehouseId: r.site_warehouse_id,
-          sourceWarehouseId: r.source_warehouse_id,
-          requesterId: r.requester_id,
-          createdDate: r.created_date,
-          expectedDate: r.expected_date
+          ...r, siteWarehouseId: r.site_warehouse_id, sourceWarehouseId: r.source_warehouse_id, requesterId: r.requester_id, createdDate: r.created_date, expectedDate: r.expected_date
         })));
-        
+
         if (actData) setActivities(actData.map((a: any) => ({
-          ...a,
-          userId: a.user_id,
-          userName: a.user_name,
-          userAvatar: a.user_avatar,
-          warehouseId: a.warehouse_id
+          ...a, userId: a.user_id, userName: a.user_name, userAvatar: a.user_avatar, warehouseId: a.warehouse_id
         })));
-        
+
         if (catData && catData.length > 0) setCategories(catData);
         if (unitData && unitData.length > 0) setUnits(unitData);
         if (settingsData) setAppSettings(settingsData);
@@ -226,13 +183,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
           const i = payload.new as any;
           const mappedItem = {
-            ...i,
-            priceIn: i.price_in,
-            priceOut: i.price_out,
-            minStock: i.min_stock,
-            supplierId: i.supplier_id,
-            imageUrl: i.image_url,
-            stockByWarehouse: i.stock_by_warehouse
+            ...i, priceIn: i.price_in, priceOut: i.price_out, minStock: i.min_stock, supplierId: i.supplier_id, imageUrl: i.image_url, stockByWarehouse: i.stock_by_warehouse
           };
           setItems(prev => {
             const exists = prev.find(item => item.id === mappedItem.id);
@@ -248,14 +199,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
           const t = payload.new as any;
           const mappedTx = {
-            ...t,
-            sourceWarehouseId: t.source_warehouse_id,
-            targetWarehouseId: t.target_warehouse_id,
-            supplierId: t.supplier_id,
-            requesterId: t.requester_id,
-            approverId: t.approver_id,
-            relatedRequestId: t.related_request_id,
-            pendingItems: t.pending_items
+            ...t, sourceWarehouseId: t.source_warehouse_id, targetWarehouseId: t.target_warehouse_id, supplierId: t.supplier_id, requesterId: t.requester_id, approverId: t.approver_id, relatedRequestId: t.related_request_id, pendingItems: t.pending_items
           };
           setTransactions(prev => {
             const exists = prev.find(tx => tx.id === mappedTx.id);
@@ -299,12 +243,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
           const r = payload.new as any;
           const mappedReq = {
-            ...r,
-            siteWarehouseId: r.site_warehouse_id,
-            sourceWarehouseId: r.source_warehouse_id,
-            requesterId: r.requester_id,
-            createdDate: r.created_date,
-            expectedDate: r.expected_date
+            ...r, siteWarehouseId: r.site_warehouse_id, sourceWarehouseId: r.source_warehouse_id, requesterId: r.requester_id, createdDate: r.created_date, expectedDate: r.expected_date
           };
           setRequests(prev => {
             const exists = prev.find(req => req.id === mappedReq.id);
@@ -319,11 +258,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       supabase.channel('public:activities').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'activities' }, payload => {
         const a = payload.new as any;
         const mappedAct = {
-          ...a,
-          userId: a.user_id,
-          userName: a.user_name,
-          userAvatar: a.user_avatar,
-          warehouseId: a.warehouse_id
+          ...a, userId: a.user_id, userName: a.user_name, userAvatar: a.user_avatar, warehouseId: a.warehouse_id
         };
         setActivities(prev => [mappedAct, ...prev].slice(0, 50));
       }).subscribe(),
@@ -381,94 +316,47 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Helper to sync a single table to Supabase
   const syncToSupabase = async (table: string, data: any) => {
     try {
-      // Map frontend camelCase to backend snake_case if needed
-      // For simplicity in this demo, we'll try to keep them close or map them
+      if (!isSupabaseConfigured) return;
+
       let payload = data;
-      
+
       if (table === 'items') {
         payload = {
-          id: data.id,
-          sku: data.sku,
-          name: data.name,
-          category: data.category,
-          unit: data.unit,
-          price_in: data.priceIn,
-          price_out: data.priceOut,
-          min_stock: data.minStock,
-          supplier_id: data.supplierId,
-          image_url: data.imageUrl,
-          stock_by_warehouse: data.stockByWarehouse
+          id: data.id, sku: data.sku, name: data.name, category: data.category, unit: data.unit,
+          price_in: data.priceIn, price_out: data.priceOut, min_stock: data.minStock,
+          supplier_id: data.supplierId, image_url: data.imageUrl, stock_by_warehouse: data.stockByWarehouse
         };
       } else if (table === 'transactions') {
         payload = {
-          id: data.id,
-          type: data.type,
-          date: data.date,
-          items: data.items,
-          source_warehouse_id: data.sourceWarehouseId,
-          target_warehouse_id: data.targetWarehouseId,
-          supplier_id: data.supplierId,
-          requester_id: data.requesterId,
-          approver_id: data.approverId,
-          status: data.status,
-          note: data.note,
-          related_request_id: data.relatedRequestId,
-          pending_items: data.pendingItems
+          id: data.id, type: data.type, date: data.date, items: data.items,
+          source_warehouse_id: data.sourceWarehouseId, target_warehouse_id: data.targetWarehouseId,
+          supplier_id: data.supplierId, requester_id: data.requesterId, approver_id: data.approverId,
+          status: data.status, note: data.note, related_request_id: data.relatedRequestId, pending_items: data.pendingItems
         };
       } else if (table === 'warehouses') {
         payload = {
-          id: data.id,
-          name: data.name,
-          address: data.address,
-          type: data.type,
-          is_archived: data.isArchived
+          id: data.id, name: data.name, address: data.address, type: data.type, is_archived: data.isArchived
         };
       } else if (table === 'suppliers') {
         payload = {
-          id: data.id,
-          name: data.name,
-          contact_person: data.contactPerson,
-          phone: data.phone,
-          debt: data.debt
+          id: data.id, name: data.name, contact_person: data.contactPerson, phone: data.phone, debt: data.debt
         };
       } else if (table === 'requests') {
         payload = {
-          id: data.id,
-          code: data.code,
-          site_warehouse_id: data.siteWarehouseId,
-          source_warehouse_id: data.sourceWarehouseId,
-          requester_id: data.requesterId,
-          status: data.status,
-          items: data.items,
-          created_date: data.createdDate,
-          expected_date: data.expectedDate,
-          note: data.note,
-          logs: data.logs
+          id: data.id, code: data.code, site_warehouse_id: data.siteWarehouseId, source_warehouse_id: data.sourceWarehouseId,
+          requester_id: data.requesterId, status: data.status, items: data.items, created_date: data.createdDate,
+          expected_date: data.expectedDate, note: data.note, logs: data.logs
         };
       } else if (table === 'activities') {
         payload = {
-          id: data.id,
-          user_id: data.userId,
-          user_name: data.userName,
-          user_avatar: data.userAvatar,
-          type: data.type,
-          action: data.action,
-          description: data.description,
-          timestamp: data.timestamp,
-          warehouse_id: data.warehouseId,
-          status: data.status
+          id: data.id, user_id: data.userId, user_name: data.userName, user_avatar: data.userAvatar,
+          type: data.type, action: data.action, description: data.description, timestamp: data.timestamp,
+          warehouse_id: data.warehouseId, status: data.status
         };
       } else if (table === 'users') {
         payload = {
-          id: data.id,
-          name: data.name,
-          email: data.email,
-          username: data.username,
-          password: data.password,
-          role: data.role,
-          avatar: data.avatar,
-          phone: data.phone,
-          assigned_warehouse_id: data.assignedWarehouseId
+          id: data.id, name: data.name, email: data.email, username: data.username,
+          phone: data.phone, role: data.role, avatar: data.avatar, assigned_warehouse_id: data.assignedWarehouseId
         };
       }
 
@@ -494,22 +382,58 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       status
     };
     setActivities(prev => [newActivity, ...prev].slice(0, 50));
-    syncToSupabase('activities', newActivity);
   };
 
   const login = async (username: string, password: string): Promise<User | null> => {
-    // In a real app, this would be a Supabase auth call or a database query
-    const foundUser = users.find(u => u.username === username && u.password === password);
-    if (foundUser) {
-      setUser(foundUser);
-      localStorage.setItem('khoviet_user', JSON.stringify(foundUser));
-      return foundUser;
+    if (isSupabaseConfigured) {
+      try {
+        // Here we map username to an email format for supabase auth if no actual email string was provided
+        // Since Supabase requires an email for signInWithPassword by default, we'll try querying the user first, or logging in by email.
+        // Assuming the `username` field might actually be an email, or if it's strictly a username, they must login with email under the hood
+        // For KhoViet we can fetch the user by username to get the email, then login.
+
+        let loginEmail = username;
+        if (!username.includes('@')) {
+          const { data, error } = await supabase.from('users').select('email').eq('username', username).single();
+          if (error || !data) throw new Error('Không tìm thấy tài khoản');
+          loginEmail = data.email;
+        }
+
+        const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+          email: loginEmail,
+          password
+        });
+
+        if (authError) throw authError;
+
+        // Fetch user profile
+        const { data: userData, error: userError } = await supabase.from('users').select('*').eq('email', loginEmail).single();
+        if (userError || !userData) throw new Error('Lỗi lấy thông tin người dùng');
+
+        const mappedUser = { ...userData, assignedWarehouseId: userData.assigned_warehouse_id };
+        setUser(mappedUser);
+        localStorage.setItem('khoviet_user', JSON.stringify(mappedUser));
+        return mappedUser;
+
+      } catch (err: any) {
+        console.error('Login error:', err);
+        throw err;
+      }
+    } else {
+      // Fallback to local mock auth
+      const foundUser = users.find(u => (u.username === username || u.email === username) && u.password === password);
+      if (foundUser) {
+        setUser(foundUser);
+        localStorage.setItem('khoviet_user', JSON.stringify(foundUser));
+        return foundUser;
+      }
+      return null;
     }
-    return null;
   };
 
   const logout = () => {
     localStorage.removeItem('khoviet_user');
+    supabase.auth.signOut();
     // We don't set user to null because the app expects a user object. 
     // We'll handle redirection in App.tsx
   };
@@ -527,14 +451,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     syncToSupabase('users', u);
     logActivity('SYSTEM', 'Thêm người dùng', `Đã thêm người dùng mới: ${u.name}`, 'SUCCESS');
   };
-  
+
   const updateUser = (u: User) => {
     setUsers(prev => prev.map(item => item.id === u.id ? u : item));
     if (user.id === u.id) setUser(u);
     syncToSupabase('users', u);
     logActivity('SYSTEM', 'Cập nhật người dùng', `Đã cập nhật thông tin người dùng: ${u.name}`, 'INFO');
   };
-  
+
   const removeUser = async (id: string) => {
     const u = users.find(user => user.id === id);
     setUsers(prev => prev.filter(u => u.id !== id));
@@ -551,30 +475,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     syncToSupabase('items', item);
     logActivity('INVENTORY', 'Thêm vật tư', `Vật tư "${item.name}" được tạo mới`, 'SUCCESS');
   };
-  
+
   const addItems = (newItems: InventoryItem[]) => {
     setItems(prev => {
       const existingSkus = new Set(prev.map(i => i.sku));
       const filteredNew = newItems.filter(ni => !existingSkus.has(ni.sku));
-      
-      // Sync each new item to Supabase
       filteredNew.forEach(item => syncToSupabase('items', item));
-      
       return [...prev, ...filteredNew];
     });
   };
-  
+
   const updateItem = (item: InventoryItem) => {
     setItems(prev => prev.map(i => i.id === item.id ? item : i));
     syncToSupabase('items', item);
   };
-  
+
   const removeItem = async (id: string) => {
     setItems(prev => prev.filter(i => i.id !== id));
-    try {
+    if (isSupabaseConfigured) {
       await supabase.from('items').delete().eq('id', id);
-    } catch (error) {
-      console.error('Error deleting item from Supabase:', error);
     }
   };
 
@@ -608,11 +527,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const addTransaction = (tx: Transaction) => {
     setTransactions(prev => [tx, ...prev]);
-    syncToSupabase('transactions', tx);
     const whId = tx.targetWarehouseId || tx.sourceWarehouseId;
-    
-    // If transaction is created as COMPLETED or APPROVED (e.g. by Admin), 
-    // we need to make sure any new items are added to the system
+
     if (tx.status === TransactionStatus.COMPLETED || tx.status === TransactionStatus.APPROVED) {
       if (tx.pendingItems && tx.pendingItems.length > 0) {
         addItems(tx.pendingItems);
@@ -621,15 +537,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     logActivity('TRANSACTION', `Tạo phiếu ${tx.type}`, `Phiếu mã ${tx.id.slice(-6)} đã được tạo`, 'INFO', whId);
     if (tx.status === TransactionStatus.COMPLETED) applyStockChange(tx);
+    syncToSupabase('transactions', tx);
   };
 
   const updateTransactionStatus = (id: string, status: TransactionStatus, approverId?: string) => {
     setTransactions(prev => prev.map(tx => {
       if (tx.id === id) {
         const updatedTx = { ...tx, status, approverId: approverId || user.id };
-        syncToSupabase('transactions', updatedTx);
         const whId = tx.targetWarehouseId || tx.sourceWarehouseId;
-        
+
         if (status === TransactionStatus.COMPLETED || status === TransactionStatus.APPROVED) {
           if (tx.pendingItems && tx.pendingItems.length > 0) {
             addItems(tx.pendingItems);
@@ -638,6 +554,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
         logActivity('TRANSACTION', `Cập nhật phiếu`, `Phiếu mã ${tx.id.slice(-6)} chuyển sang ${status}`, status === TransactionStatus.COMPLETED ? 'SUCCESS' : 'INFO', whId);
         if (status === TransactionStatus.COMPLETED) applyStockChange(updatedTx);
+        syncToSupabase('transactions', updatedTx);
         return updatedTx;
       }
       return tx;
@@ -650,7 +567,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const filteredItems = tx.items.filter(ti => selectedItemIds.includes(ti.itemId));
         const isNeedReceipt = tx.type === TransactionType.IMPORT || tx.type === TransactionType.TRANSFER;
         const nextStatus = isNeedReceipt ? TransactionStatus.APPROVED : TransactionStatus.COMPLETED;
-        
+
         if (tx.pendingItems && tx.pendingItems.length > 0) {
           const selectedPendingItems = tx.pendingItems.filter(ni => selectedItemIds.includes(ni.id));
           if (selectedPendingItems.length > 0) {
@@ -658,22 +575,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           }
         }
 
-        const updatedTx = { 
-          ...tx, 
+        const updatedTx = {
+          ...tx,
           items: filteredItems,
           status: nextStatus,
           approverId: approverId,
-          note: selectedItemIds.length < tx.items.length 
-            ? `${tx.note} (Đã lọc bớt ${tx.items.length - selectedItemIds.length} món)` 
+          note: selectedItemIds.length < tx.items.length
+            ? `${tx.note} (Đã lọc bớt ${tx.items.length - selectedItemIds.length} món)`
             : tx.note,
           pendingItems: []
         };
-        syncToSupabase('transactions', updatedTx);
 
         const whId = tx.targetWarehouseId || tx.sourceWarehouseId;
         logActivity('TRANSACTION', `Phê duyệt phiếu`, `Phiếu mã ${tx.id.slice(-6)} đã được phê duyệt một phần (${selectedItemIds.length}/${tx.items.length} món)`, 'SUCCESS', whId);
-        
+
         if (nextStatus === TransactionStatus.COMPLETED) applyStockChange(updatedTx);
+        syncToSupabase('transactions', updatedTx);
         return updatedTx;
       }
       return tx;
@@ -682,10 +599,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const clearTransactionHistory = async () => {
     setTransactions([]);
-    try {
-      await supabase.from('transactions').delete().neq('id', '0');
-    } catch (error) {
-      console.error('Error clearing transactions from Supabase:', error);
+    if (isSupabaseConfigured) {
+      const { error } = await supabase.from('transactions').delete().gt('id', '0');
+      if (error) console.error("Error clearing transactions:", error);
     }
   };
 
@@ -694,18 +610,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setTransactions([]);
     setActivities([]);
     setRequests([]);
-    
-    try {
-      await Promise.all([
-        supabase.from('items').delete().neq('id', '0'),
-        supabase.from('transactions').delete().neq('id', '0'),
-        supabase.from('activities').delete().neq('id', '0'),
-        supabase.from('requests').delete().neq('id', '0')
-      ]);
-    } catch (error) {
-      console.error('Error clearing all data from Supabase:', error);
-    }
-    
+
     localStorage.removeItem('khoviet_items');
     localStorage.removeItem('khoviet_transactions');
     localStorage.removeItem('khoviet_activities');
@@ -738,11 +643,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       logActivity('SYSTEM', 'Lưu trữ kho bãi', `Kho ${warehouse.name} vẫn còn tồn kho nên đã được chuyển vào trạng thái Lưu trữ.`, 'WARNING');
     } else {
       setWarehouses(prev => prev.filter(w => w.id !== id));
-      try {
-        await supabase.from('warehouses').delete().eq('id', id);
-      } catch (error) {
-        console.error('Error deleting warehouse from Supabase:', error);
-      }
+      if (isSupabaseConfigured) await supabase.from('warehouses').delete().eq('id', id);
       logActivity('SYSTEM', 'Xóa kho bãi', `Đã xóa hoàn toàn kho: ${warehouse.name}`, 'DANGER');
     }
   };
@@ -753,7 +654,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     logActivity('REQUEST', 'Yêu cầu vật tư', `Phiếu yêu cầu ${r.code} đã được gửi`, 'INFO', r.siteWarehouseId);
   };
 
-  const updateRequestStatus = (id: string, status: RequestStatus, note?: string, approvedItems?: {itemId: string, qty: number}[], sourceWarehouseId?: string) => {
+  const updateRequestStatus = (id: string, status: RequestStatus, note?: string, approvedItems?: { itemId: string, qty: number }[], sourceWarehouseId?: string) => {
     setRequests(prev => prev.map(req => {
       if (req.id === id) {
         const newLog: AuditLog = {
@@ -778,9 +679,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           items: updatedItems,
           logs: [...req.logs, newLog]
         };
-        syncToSupabase('requests', updatedReq);
 
         logActivity('REQUEST', 'Cập nhật yêu cầu', `Yêu cầu ${req.code} chuyển sang ${status}`, 'INFO', req.siteWarehouseId);
+        syncToSupabase('requests', updatedReq);
 
         return updatedReq;
       }
@@ -793,19 +694,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setCategories(prev => [...prev, newCat]);
     syncToSupabase('categories', newCat);
   };
-  
+
   const updateCategory = (c: ItemCategory) => {
     setCategories(prev => prev.map(item => item.id === c.id ? c : item));
     syncToSupabase('categories', c);
   };
-  
+
   const removeCategory = async (id: string) => {
     setCategories(prev => prev.filter(c => c.id !== id));
-    try {
-      await supabase.from('categories').delete().eq('id', id);
-    } catch (error) {
-      console.error('Error deleting category from Supabase:', error);
-    }
+    if (isSupabaseConfigured) await supabase.from('categories').delete().eq('id', id);
   };
 
   const addUnit = (name: string) => {
@@ -813,51 +710,43 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setUnits(prev => [...prev, newUnit]);
     syncToSupabase('units', newUnit);
   };
-  
+
   const updateUnit = (u: ItemUnit) => {
     setUnits(prev => prev.map(item => item.id === u.id ? u : item));
     syncToSupabase('units', u);
   };
-  
+
   const removeUnit = async (id: string) => {
     setUnits(prev => prev.filter(u => u.id !== id));
-    try {
-      await supabase.from('units').delete().eq('id', id);
-    } catch (error) {
-      console.error('Error deleting unit from Supabase:', error);
-    }
+    if (isSupabaseConfigured) await supabase.from('units').delete().eq('id', id);
   };
 
   const addSupplier = (s: Supplier) => {
     setSuppliers(prev => [...prev, s]);
     syncToSupabase('suppliers', s);
   };
-  
+
   const updateSupplier = (s: Supplier) => {
     setSuppliers(prev => prev.map(item => item.id === s.id ? s : item));
     syncToSupabase('suppliers', s);
   };
-  
+
   const removeSupplier = async (id: string) => {
     setSuppliers(prev => prev.filter(s => s.id !== id));
-    try {
-      await supabase.from('suppliers').delete().eq('id', id);
-    } catch (error) {
-      console.error('Error deleting supplier from Supabase:', error);
-    }
+    if (isSupabaseConfigured) await supabase.from('suppliers').delete().eq('id', id);
   };
 
   const updateAppSettings = (s: AppSettings) => {
     setAppSettings(s);
-    syncToSupabase('app_settings', s);
+    syncToSupabase('app_settings', { ...s, id: 1 });
   };
 
   return (
     <AppContext.Provider value={{
       user, users, appSettings, setUser, switchUser, addUser, updateUser, removeUser, items, warehouses, suppliers, transactions, requests, activities,
       categories, units, addItem, addItems, updateItem, removeItem, addTransaction, updateTransactionStatus, clearTransactionHistory, addWarehouse, updateWarehouse, removeWarehouse,
-      addRequest, updateRequestStatus, logActivity, addCategory, updateCategory, removeCategory, addUnit, updateUnit, removeUnit, 
-      addSupplier, updateSupplier, removeSupplier, updateAppSettings, approvePartialTransaction, clearAllData, 
+      addRequest, updateRequestStatus, logActivity, addCategory, updateCategory, removeCategory, addUnit, updateUnit, removeUnit,
+      addSupplier, updateSupplier, removeSupplier, updateAppSettings, approvePartialTransaction, clearAllData,
       login, logout, isLoading, isRefreshing, connectionError
     }}>
       {children}
